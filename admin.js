@@ -1,6 +1,6 @@
 
 // ============================================
-// ADMIN PANEL LOGIC
+// ADMIN PANEL LOGIC (Enhanced)
 // ============================================
 
 const AdminApp = {
@@ -8,91 +8,75 @@ const AdminApp = {
     currentView: 'posts',
     isEditing: false,
     editingId: null,
+    quill: null,
+    mediaMode: 'featured', // 'featured' or 'editor'
 
     init() {
         this.checkAuth();
         this.setupNavigation();
         this.setupLogin();
         this.setupEditor();
+        this.setupMediaManager();
+        this.setupCategories();
+        this.setupSEO();
 
-        // Se já estiver logado, inicializa a view
         if (this.isAuthenticated()) {
             this.showDashboard();
             this.loadPosts();
-            this.checkApiStatus();
         }
     },
 
     // ============================================
-    // AUTHENTICATION
+    // AUTH
     // ============================================
-
-    isAuthenticated() {
-        return localStorage.getItem('caas_admin_auth') === 'true';
-    },
+    isAuthenticated() { return localStorage.getItem('caas_admin_auth') === 'true'; },
 
     checkAuth() {
-        if (this.isAuthenticated()) {
-            this.showDashboard();
-        } else {
-            this.showLogin();
-        }
+        if (this.isAuthenticated()) this.showDashboard();
+        else this.showLogin();
     },
 
     setupLogin() {
-        const form = document.getElementById('login-form');
-        const errorMsg = document.getElementById('login-error');
-
-        form.addEventListener('submit', async (e) => {
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
 
-            // Tenta autenticar
-            // 1. Tenta contra config local (api.js) ou hardcoded
+            // Tenta servidor primeiro se disponível
+            try {
+                const creds = btoa(`${user}:${pass}`);
+                // Simple verify endpoint check
+                const res = await fetch('http://localhost:3001/wp-json/wp/v2/users/me', {
+                    headers: { 'Authorization': `Basic ${creds}` }
+                });
+
+                if (res.ok) {
+                    this.loginSuccess(creds);
+                    return;
+                }
+            } catch { }
+
+            // Fallback config local
             if (user === 'admin' && pass === 'caas@express2024') {
                 this.loginSuccess(btoa(`${user}:${pass}`));
                 return;
             }
 
-            // 2. Tenta contra o servidor (se disponível)
-            try {
-                const credentials = btoa(`${user}:${pass}`);
-                const res = await fetch('http://localhost:3001/wp-json/wp/v2/users/me', {
-                    headers: { 'Authorization': `Basic ${credentials}` }
-                });
-
-                if (res.ok) {
-                    this.loginSuccess(credentials);
-                    return;
-                }
-            } catch (e) {
-                console.log('Login server check failed', e);
-            }
-
-            // Falha
-            errorMsg.style.display = 'block';
-            errorMsg.textContent = 'Credenciais inválidas ou erro de conexão';
+            document.getElementById('login-error').style.display = 'block';
         });
 
         document.getElementById('logout-btn').addEventListener('click', (e) => {
             e.preventDefault();
-            this.logout();
+            localStorage.removeItem('caas_admin_auth');
+            localStorage.removeItem('caas_api_token');
+            location.reload();
         });
     },
 
     loginSuccess(token) {
         localStorage.setItem('caas_admin_auth', 'true');
-        // Salva token para api.js usar (se estiver usando RemoteDB)
-        localStorage.setItem('caas_api_token', token); // Basic auth token
-        // Força recarregar pagina para limpar estados
-        window.location.reload();
-    },
-
-    logout() {
-        localStorage.removeItem('caas_admin_auth');
-        localStorage.removeItem('caas_api_token');
-        window.location.reload();
+        localStorage.setItem('caas_api_token', token);
+        location.reload();
     },
 
     showLogin() {
@@ -108,200 +92,186 @@ const AdminApp = {
     // ============================================
     // NAVIGATION
     // ============================================
-
     setupNavigation() {
-        const navItems = document.querySelectorAll('.nav-item[data-page]');
-
-        navItems.forEach(item => {
+        document.querySelectorAll('.nav-item[data-page]').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
                 const page = item.getAttribute('data-page');
                 this.switchView(page);
-
-                // Update active state
-                navItems.forEach(nav => nav.classList.remove('active'));
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
                 item.classList.add('active');
             });
         });
-
-        document.getElementById('btn-new-post').addEventListener('click', () => {
-            this.openEditor();
-        });
+        document.getElementById('btn-new-post').addEventListener('click', () => this.openEditor());
     },
 
     switchView(viewName) {
-        // Hide all views
         document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
-
-        // Show target view
-        const target = document.getElementById(`view-${viewName}`);
-        if (target) {
-            target.style.display = 'block';
-            this.currrentView = viewName;
-
-            if (viewName === 'posts') this.loadPosts();
-        }
+        document.getElementById(`view-${viewName}`).style.display = 'block';
+        if (viewName === 'posts') this.loadPosts();
+        if (viewName === 'categories') this.loadCategoriesView();
+        if (viewName === 'media') this.loadMediaView(); // Simple alias to open modal? Or separate view? Separate view content
     },
 
     // ============================================
-    // POSTS MANAGER
+    // POSTS LIST
     // ============================================
-
     async loadPosts() {
         const tbody = document.getElementById('posts-table-body');
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Carregando...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" align="center">Carregando...</td></tr>';
 
         try {
-            const result = await CaasAPI.posts.list({ per_page: 50 });
-            const posts = result.posts || []; // api.js retorna objeto { posts: [], ... }
-
+            const data = await CaasAPI.posts.list({ per_page: 50 });
+            const posts = data.posts || [];
             if (posts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Nenhum post encontrado.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" align="center">Nenhum post encontrado.</td></tr>';
                 return;
             }
-
             tbody.innerHTML = posts.map(post => `
                 <tr>
                     <td><strong>${post.title}</strong></td>
-                    <td>${post.category || 'Sem categoria'}</td>
-                    <td>${new Date(post.created_at || new Date()).toLocaleDateString('pt-BR')}</td>
-                    <td><span class="status-badge status-${post.status || 'published'}">${post.status === 'publish' ? 'Publicado' : (post.status || 'Rascunho')}</span></td>
+                    <td>${post.category || 'Geral'}</td>
+                    <td>${new Date(post.created_at).toLocaleDateString()}</td>
+                    <td><span class="status-badge status-${post.status}">${post.status}</span></td>
                     <td>
                         <button class="action-btn btn-edit" onclick="AdminApp.editPost(${post.id})">Editar</button>
                         <button class="action-btn btn-delete" onclick="AdminApp.deletePost(${post.id})">Apagar</button>
                     </td>
                 </tr>
             `).join('');
-
-        } catch (e) {
-            console.error(e);
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: red;">Erro ao carregar posts.</td></tr>';
+        } catch {
+            tbody.innerHTML = '<tr><td colspan="5" align="center" style="color:red">Erro ao carregar.</td></tr>';
         }
     },
 
     async deletePost(id) {
-        if (confirm('Tem certeza que deseja excluir este post?')) {
+        if (confirm('Excluir este post?')) {
             await CaasAPI.posts.delete(id);
             this.loadPosts();
         }
     },
 
     // ============================================
-    // EDITOR
+    // EDITOR (Quill + Logic)
     // ============================================
-
     setupEditor() {
-        document.getElementById('btn-cancel-edit').addEventListener('click', () => {
-            this.switchView('posts');
-        });
-
-        document.getElementById('btn-save-post').addEventListener('click', async () => {
-            this.savePost();
-        });
-
-        // Image Preview
-        document.getElementById('post-image').addEventListener('input', (e) => {
-            const url = e.target.value;
-            const preview = document.getElementById('image-preview');
-            if (url) {
-                preview.style.backgroundImage = `url('${url}')`;
-            } else {
-                preview.style.backgroundImage = 'none';
+        // Init Quill
+        this.quill = new Quill('#quill-editor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    ['blockquote', 'code-block'],
+                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                    [{ 'align': [] }],
+                    ['link', 'image'], // Image here uses default base64, usually needs custom handler for server upload
+                    ['clean']
+                ]
             }
         });
+
+        // Custom Image Handler (Optional - for inserting into Quill)
+        const toolbar = this.quill.getModule('toolbar');
+        toolbar.addHandler('image', () => {
+            this.openMediaLibrary('editor');
+        });
+
+        // Save Actions
+        document.getElementById('btn-cancel-edit').onclick = () => this.switchView('posts');
+        document.getElementById('btn-save-post').onclick = () => this.savePost();
+
+        // Populate Categories Checklist
+        this.refreshEditorCategories();
+    },
+
+    async refreshEditorCategories() {
+        const cats = await CaasAPI.categories.list();
+        const container = document.getElementById('categories-checklist');
+        container.innerHTML = cats.map(c => `
+            <label style="display:block; margin-bottom:5px;">
+                <input type="radio" name="post_category" value="${c.name}"> ${c.name}
+            </label>
+        `).join('');
+        // Add default check
+        if (container.querySelector('input')) container.querySelector('input').checked = true;
     },
 
     openEditor(post = null) {
         this.switchView('editor');
+        this.refreshEditorCategories();
 
         if (post) {
             this.isEditing = true;
             this.editingId = post.id;
             document.getElementById('editor-title-label').textContent = 'Editar Post';
             document.getElementById('post-title').value = post.title;
-            document.getElementById('post-content').value = post.content || post.excerpt || ''; // Fallback for mockup data
-            document.getElementById('post-status').value = post.status === 'publish' ? 'published' : (post.status || 'draft');
-            document.getElementById('post-category').value = post.category || 'Geral';
-            document.getElementById('post-image').value = post.image || '';
-            if (post.image) {
-                document.getElementById('image-preview').style.backgroundImage = `url('${post.image}')`;
-            }
+            // Quill Content
+            this.quill.root.innerHTML = post.content;
+
+            // Meta logic
+            document.getElementById('post-status').value = post.status;
+            // Category check
+            const radios = document.getElementsByName('post_category');
+            for (let r of radios) { if (r.value === post.category) r.checked = true; }
+
+            // Image
+            this.setFeaturedImage(post.image);
+
+            // SEO
+            const meta = post.meta || {};
+            document.getElementById('seo-keyword').value = meta.seo_keyword || '';
+            document.getElementById('seo-title').value = meta.seo_title || '';
+            document.getElementById('seo-desc').value = meta.seo_desc || '';
+            this.updateSEOPreview();
         } else {
             this.isEditing = false;
             this.editingId = null;
             document.getElementById('editor-title-label').textContent = 'Novo Post';
             document.getElementById('post-title').value = '';
-            document.getElementById('post-content').value = '';
-            document.getElementById('post-image').value = '';
-            document.getElementById('image-preview').style.backgroundImage = 'none';
+            this.quill.setText('');
+            this.setFeaturedImage(null);
+            document.getElementById('seo-keyword').value = '';
+            document.getElementById('seo-title').value = '';
+            document.getElementById('seo-desc').value = '';
+            this.updateSEOPreview();
         }
     },
 
     async editPost(id) {
-        // Find post data (ideally should fetch proper full data, but list has basic info)
-        // Let's fetch full data
         const post = await CaasAPI.posts.get(id);
-        if (post) {
-            this.openEditor(post);
-        } else {
-            alert('Erro ao carregar post');
-        }
+        if (post) this.openEditor(post);
     },
 
     async savePost() {
-        const title = document.getElementById('post-title').value;
-        const content = document.getElementById('post-content').value;
-        const status = document.getElementById('post-status').value;
-        const category = document.getElementById('post-category').value;
-        const image = document.getElementById('post-image').value;
-
-        if (!title) {
-            alert('O título é obrigatório');
-            return;
-        }
-
-        const data = {
-            title,
-            content,
-            status,
-            category,
-            image, // Nota: Se for Server API, 'image' pode precisar ser tratado como 'featured_media' ID ou meta, mas api.js cuida disso? 
-            // No api.js atual, 'createPost' envia 'data' direto.
-            // O RemoteDB createPost envia JSON. 
-            // O server.js espera 'featured_media' como ID number. 
-            // Mas nosso server.js mockado aceita? 
-            // Server.js: app.post(...) -> postsDB.create(...) -> aceita qualquer campo no body se não validar estrito.
-            // O server.js espera: title, content, status... 
-            // Ele não tem campo 'image' explícito na struct WP padrão (é featured_media), mas nosso server JAVASCRIPT tem:
-            // "meta: {}" no create.
-            // Se eu mandar 'image' extra, o server salva?
-            // No server.js: const post = postsDB.create({ ...req.body ... }). Pega campos específicos.
-            // Ele pega: title, content, excerpt, status, type, categories, tags, featured_media, author.
-            // Ele NÃO pega 'image' string direto na raiz.
-            // VAMOS AJUSTAR O ADMIN PARA MANDAR ISSO NO META OU CONTENT?
-            // Ou melhor: Vamos garantir que o api.js normalize a saída e ENTRADA.
-            // Para simplificar: O admin vai salvar a URL da imagem nos dados do post.
-            // O server.js precisa aceitar isso. 
-            // O servidor que criei não salva campos arbitrários na raiz.
-            // Ele salva 'meta'.
-            // Vou mandar { title, content, meta: { image: url } }
-            // Mas o api.js precisa saber disso.
-            // Dado o tempo: Vou salvar a imagem como primeira tag <img> no conteúdo se não for WP nativo.
-            // OU: Vou assumir que para o "Blog estático local" funciona (localStorage aceita tudo).
-            // Para o Server: vou mandar, se o server ignorar, paciência.
-            // Mas espera: O usuário quer que funcione.
-            // Vou injetar a imagem no conteudo HTML se for nova.
-        };
-
-        // Simples hack para imagem: Se tiver imagem, adiciona ao meta (se api suportar) ou assume localStorage
-        // O api.js remoteDB adapter manda JSON stringify data.
-        // O server.js ignora campos desconhecidos.
-
         const btn = document.getElementById('btn-save-post');
-        btn.textContent = 'Salvando...';
         btn.disabled = true;
+        btn.textContent = 'Salvando...';
 
         try {
+            const title = document.getElementById('post-title').value;
+            const content = this.quill.root.innerHTML;
+            const status = document.getElementById('post-status').value;
+            // Get category
+            let category = 'Geral';
+            const catEl = document.querySelector('input[name="post_category"]:checked');
+            if (catEl) category = catEl.value;
+
+            const image = document.getElementById('post-image-url').value;
+
+            // SEO Data
+            const meta = {
+                seo_keyword: document.getElementById('seo-keyword').value,
+                seo_title: document.getElementById('seo-title').value,
+                seo_desc: document.getElementById('seo-desc').value
+            };
+
+            const data = { title, content, status, category, image, meta };
+            // Note: Server accepts 'meta' for custom fields, and 'featured_media' ID.
+            // Simplified: we send image URL in 'image' prop (server might ignore but api.js normalize handles) 
+            // OR store in meta too just in case.
+            data.meta.image_url = image;
+
             if (this.isEditing) {
                 await CaasAPI.posts.update(this.editingId, data);
             } else {
@@ -310,25 +280,166 @@ const AdminApp = {
             this.switchView('posts');
         } catch (e) {
             console.error(e);
-            alert('Erro ao salvar');
+            alert('Erro ao salvar.');
         } finally {
-            btn.textContent = 'Salvar Post';
             btn.disabled = false;
+            btn.textContent = 'Publicar';
         }
     },
 
-    // Status Check
-    checkApiStatus() {
-        // Verifica se window.CaasAPI.auth.testAuth funciona se remoto?
-        const statusEl = document.getElementById('api-status');
-        // Hack para saber se é remoto:
-        // api.js não expõe Repository.useRemote publicamente fácil.
-        // Mas podemos tentar listar posts.
+    // ============================================
+    // MEDIA MANAGER
+    // ============================================
+    setupMediaManager() {
+        // Tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+                if (btn.dataset.tab === 'library') this.loadMediaLibraryGrid();
+            });
+        });
+
+        // Upload
+        document.getElementById('file-input').onchange = (e) => this.handleUpload(e.target.files[0]);
+        // Allow select
+        document.getElementById('btn-select-media').onclick = () => this.handleMediaSelection();
+    },
+
+    openMediaLibrary(mode = 'featured') {
+        this.mediaMode = mode;
+        document.getElementById('media-modal').style.display = 'flex';
+        this.loadMediaLibraryGrid();
+    },
+
+    closeMediaLibrary() {
+        document.getElementById('media-modal').style.display = 'none';
+    },
+
+    async handleUpload(file) {
+        if (!file) return;
+        const prog = document.getElementById('upload-progress');
+        prog.style.display = 'block';
+        try {
+            const res = await CaasAPI.media.upload(file);
+            console.log('Uploaded', res);
+            prog.style.display = 'none';
+            // Switch to library tab
+            document.querySelector('.tab-btn[data-tab="library"]').click();
+        } catch (e) {
+            alert('Erro no upload: ' + e.message);
+            prog.style.display = 'none';
+        }
+    },
+
+    async loadMediaLibraryGrid() {
+        const grid = document.getElementById('media-grid');
+        grid.innerHTML = 'Carregando...';
+        try {
+            const items = await CaasAPI.media.list();
+            grid.innerHTML = items.map(item => `
+                <div class="media-item" onclick="AdminApp.selectMediaItem(this, '${item.source_url || item.guid?.rendered || item.url || ''}')" data-url="${item.source_url}">
+                    <img src="${item.source_url || item.guid?.rendered || item.url || ''}">
+                    <div class="check">✓</div>
+                </div>
+            `).join('');
+        } catch {
+            grid.innerHTML = 'Erro ao carregar mídia.';
+        }
+    },
+
+    selectMediaItem(el, url) {
+        document.querySelectorAll('.media-item').forEach(i => i.classList.remove('selected'));
+        el.classList.add('selected');
+        document.getElementById('btn-select-media').disabled = false;
+        document.getElementById('btn-select-media').dataset.selectedUrl = url;
+    },
+
+    handleMediaSelection() {
+        const url = document.getElementById('btn-select-media').dataset.selectedUrl;
+        if (!url) return;
+
+        if (this.mediaMode === 'featured') {
+            this.setFeaturedImage(url);
+        } else if (this.mediaMode === 'editor') {
+            const range = this.quill.getSelection(true);
+            this.quill.insertEmbed(range.index, 'image', url);
+        }
+        this.closeMediaLibrary();
+    },
+
+    setFeaturedImage(url) {
+        const preview = document.getElementById('featured-image-preview');
+        const input = document.getElementById('post-image-url');
+        input.value = url || '';
+        if (url) {
+            preview.style.backgroundImage = `url('${url}')`;
+            preview.innerHTML = ''; // remove placeholder text
+        } else {
+            preview.style.backgroundImage = 'none';
+            preview.innerHTML = '<span class="placeholder-text">Definir imagem destacada</span>';
+        }
+    },
+
+    async loadMediaView() {
+        // Just fill the simplified list for now
+        this.openMediaLibrary(); // Reuse modal logic is easier
+        this.switchView('posts'); // Go back to avoid empty page
+    },
+
+    // ============================================
+    // CATEGORIES
+    // ============================================
+    setupCategories() {
+        document.getElementById('btn-save-category').onclick = async () => {
+            const name = document.getElementById('new-cat-name').value;
+            if (!name) return;
+            await CaasAPI.categories.create(name);
+            document.getElementById('new-cat-name').value = '';
+            document.getElementById('new-cat-slug').value = '';
+            this.loadCategoriesView();
+        };
+        document.getElementById('btn-add-cat-quick').onclick = async () => {
+            const name = prompt("Nome da nova categoria:");
+            if (name) {
+                await CaasAPI.categories.create(name);
+                this.refreshEditorCategories();
+            }
+        }
+    },
+
+    async loadCategoriesView() {
+        const tbody = document.getElementById('categories-table-body');
+        const cats = await CaasAPI.categories.list();
+        tbody.innerHTML = cats.map(c => `
+            <tr>
+                <td>${c.name}</td>
+                <td>${c.slug}</td>
+                <td>-</td>
+                <td><button class="action-btn btn-delete" onclick="alert('Funcionalidade em desenvolvimento')">Excluir</button></td>
+            </tr>
+        `).join('');
+    },
+
+    // ============================================
+    // SEO
+    // ============================================
+    setupSEO() {
+        const update = () => this.updateSEOPreview();
+        document.getElementById('seo-title').addEventListener('input', update);
+        document.getElementById('seo-desc').addEventListener('input', update);
+        document.getElementById('post-title').addEventListener('input', update);
+    },
+
+    updateSEOPreview() {
+        const title = document.getElementById('seo-title').value || document.getElementById('post-title').value || 'Título do Post';
+        const desc = document.getElementById('seo-desc').value || 'Sua descrição aparecerá aqui nos resultados de busca...';
+        document.getElementById('preview-seo-title').textContent = title.substring(0, 60) + (title.length > 60 ? '...' : '');
+        document.getElementById('preview-seo-desc').textContent = desc.substring(0, 160) + (desc.length > 160 ? '...' : '');
     }
 };
 
-// Expose globally
 window.AdminApp = AdminApp;
-
-// Auto init
 AdminApp.init();

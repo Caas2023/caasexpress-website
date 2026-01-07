@@ -11,6 +11,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+    <!-- Quill Editor (CDN) -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+
     <!-- Styles -->
     <link rel="stylesheet" href="admin.css">
 </head>
@@ -69,14 +73,16 @@
                     </svg>
                     Mídia
                 </a>
-                <a href="#" class="nav-item" data-page="settings">
+                <a href="#" class="nav-item" data-page="categories">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path
-                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
-                        </path>
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
                     </svg>
-                    Configurações
+                    Categorias
                 </a>
             </nav>
 
@@ -102,13 +108,12 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Posts View -->
+
+            <!-- VIEW: POSTS LIST -->
             <div id="view-posts" class="view-section">
                 <div class="page-header">
-                    <h1>Posts</h1>
-                    <button class="btn-primary" id="btn-new-post">
-                        + Novo Post
-                    </button>
+                    <h1>Todos os Posts</h1>
+                    <button class="btn-primary" id="btn-new-post">+ Adicionar Novo</button>
                 </div>
 
                 <div class="card">
@@ -122,80 +127,191 @@
                                 <th>Ações</th>
                             </tr>
                         </thead>
-                        <tbody id="posts-table-body">
-                            <!-- Posts will be injected here -->
-                        </tbody>
+                        <tbody id="posts-table-body"></tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Editor View -->
+            <!-- VIEW: EDITOR -->
             <div id="view-editor" class="view-section" style="display: none;">
                 <div class="page-header">
                     <h1 id="editor-title-label">Novo Post</h1>
                     <div class="header-actions">
                         <button class="btn-secondary" id="btn-cancel-edit">Cancelar</button>
-                        <button class="btn-primary" id="btn-save-post">Salvar Post</button>
+                        <button class="btn-primary" id="btn-save-post">Publicar</button>
                     </div>
                 </div>
 
                 <div class="editor-grid">
+                    <!-- Main Editor Area -->
                     <div class="editor-main">
                         <div class="form-group">
-                            <input type="text" id="post-title" class="title-input" placeholder="Adicione um título"
+                            <input type="text" id="post-title" class="title-input" placeholder="Adicione o título aqui"
                                 required>
                         </div>
-                        <div class="form-group">
-                            <textarea id="post-content" class="content-input"
-                                placeholder="Escreva seu artigo aqui... (HTML suportado)"></textarea>
+
+                        <!-- Rich Text Editor -->
+                        <div class="card" style="padding: 0; overflow:hidden;">
+                            <div id="editor-toolbar"></div>
+                            <div id="quill-editor" style="height: 400px;"></div>
+                        </div>
+
+                        <!-- SEO Metabox (RankMath Style) -->
+                        <div class="card seo-card" style="margin-top: 2rem;">
+                            <div class="seo-header">
+                                <h3>SEO & Metadados</h3>
+                                <span class="badge-seo">Revisão</span>
+                            </div>
+                            <div class="form-group">
+                                <label>Palavra-chave Foco</label>
+                                <input type="text" id="seo-keyword" placeholder="Ex: motoboy urgente">
+                            </div>
+                            <div class="seo-preview">
+                                <div class="preview-title" id="preview-seo-title">Título do Post...</div>
+                                <div class="preview-url">caasexpresss.com/blog/...</div>
+                                <div class="preview-desc" id="preview-seo-desc">Descrição aparecerá aqui...</div>
+                            </div>
+                            <div class="form-group">
+                                <label>Título SEO</label>
+                                <input type="text" id="seo-title">
+                            </div>
+                            <div class="form-group">
+                                <label>Meta Descrição</label>
+                                <textarea id="seo-desc" rows="3"></textarea>
+                            </div>
                         </div>
                     </div>
 
+                    <!-- Sidebar -->
                     <div class="editor-sidebar">
                         <div class="card">
-                            <h3>Publicação</h3>
+                            <h3>Publicar</h3>
                             <div class="form-group">
                                 <label>Status</label>
                                 <select id="post-status">
-                                    <option value="published">Publicado</option>
+                                    <option value="publish">Publicado</option>
                                     <option value="draft">Rascunho</option>
+                                    <option value="private">Privado</option>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Categoria</label>
-                                <select id="post-category">
-                                    <option value="Geral">Geral</option>
-                                    <option value="Dicas">Dicas</option>
-                                    <option value="Serviços">Serviços</option>
-                                    <option value="Novidades">Novidades</option>
+                                <label>Visibilidade</label>
+                                <select>
+                                    <option>Público</option>
+                                    <option>Protegido por senha</option>
                                 </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Publicar em</label>
+                                <input type="datetime-local" id="post-date">
                             </div>
                         </div>
 
                         <div class="card" style="margin-top: 1rem;">
-                            <h3>Imagem de Capa</h3>
-                            <div class="form-group">
-                                <input type="url" id="post-image" placeholder="URL da imagem (https://...)"
-                                    style="width: 100%;">
-                                <div id="image-preview" class="image-preview"></div>
+                            <h3>Categorias</h3>
+                            <div class="categories-list-check" id="categories-checklist">
+                                <!-- Injected via JS -->
+                                <label><input type="checkbox" value="Geral" checked> Geral</label>
                             </div>
+                            <button class="btn-text" id="btn-add-cat-quick">+ Adicionar Nova Categoria</button>
+                        </div>
+
+                        <div class="card" style="margin-top: 1rem;">
+                            <h3>Imagem Destacada</h3>
+                            <div id="featured-image-preview" class="image-preview"
+                                onclick="AdminApp.openMediaLibrary('featured')">
+                                <span class="placeholder-text">Definir imagem destacada</span>
+                            </div>
+                            <input type="hidden" id="post-image-url">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Other Views (Constructed as needed) -->
-            <div id="view-settings" class="view-section" style="display: none;">
+            <!-- VIEW: MEDIA LIBRARY -->
+            <div id="view-media" class="view-section" style="display: none;">
                 <div class="page-header">
-                    <h1>Configurações</h1>
+                    <h1>Biblioteca de Mídia</h1>
+                    <button class="btn-primary" onclick="AdminApp.openMediaLibrary()">Adicionar Nova</button>
                 </div>
                 <div class="card">
-                    <p>Configurações gerais do site.</p>
-                    <p>Conexão API: <span id="api-status">Verificando...</span></p>
+                    <!-- Media Grid injected here if simple view desired -->
+                    <p>Use o botão "Adicionar Nova" para gerenciar uploads.</p>
+                </div>
+            </div>
+
+            <!-- VIEW: CATEGORIES -->
+            <div id="view-categories" class="view-section" style="display: none;">
+                <div class="page-header">
+                    <h1>Categorias</h1>
+                </div>
+                <div class="editor-grid">
+                    <div class="card">
+                        <h3>Adicionar Nova Categoria</h3>
+                        <div class="form-group">
+                            <label>Nome</label>
+                            <input type="text" id="new-cat-name">
+                        </div>
+                        <div class="form-group">
+                            <label>Slug</label>
+                            <input type="text" id="new-cat-slug" placeholder="amigavel-para-url">
+                        </div>
+                        <button class="btn-primary" id="btn-save-category">Adicionar Nova Categoria</button>
+                    </div>
+                    <div class="card">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Slug</th>
+                                    <th>Contagem</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="categories-table-body"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
         </main>
+    </div>
+
+    <!-- MEDIA MODAL -->
+    <div id="media-modal" class="modal" style="display: none;">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h2>Biblioteca de Mídia</h2>
+                <span class="close-modal" onclick="AdminApp.closeMediaLibrary()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="media-tabs">
+                    <button class="tab-btn active" data-tab="upload">Enviar Arquivos</button>
+                    <button class="tab-btn" data-tab="library">Biblioteca</button>
+                </div>
+
+                <div id="tab-upload" class="tab-content active">
+                    <div class="upload-area" id="drop-zone">
+                        <p>Arraste arquivos para cá ou</p>
+                        <button class="btn-secondary" onclick="document.getElementById('file-input').click()">Selecionar
+                            Arquivos</button>
+                        <input type="file" id="file-input" hidden accept="image/*">
+                    </div>
+                    <div id="upload-progress" style="display:none; margin-top: 1rem;">
+                        Enviando...
+                    </div>
+                </div>
+
+                <div id="tab-library" class="tab-content">
+                    <div class="media-grid" id="media-grid">
+                        <!-- Images injected here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" disabled id="btn-select-media">Selecionar</button>
+            </div>
+        </div>
     </div>
 
     <script src="api.js"></script>
