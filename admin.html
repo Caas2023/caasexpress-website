@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo | Caas Express</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <div class="logo-icon">🏍️</div>
+                <h2>Caas Express Admin</h2>
+                <p>Entre para gerenciar o conteúdo</p>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label>Usuário</label>
+                    <input type="text" id="username" placeholder="admin" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" id="password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-primary btn-block">Entrar</button>
+            </form>
+            <div id="login-error" class="error-message" style="display: none;">Credenciais inválidas</div>
+        </div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboard-screen" class="dashboard-container" style="display: none;">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-icon">🏍️</div>
+                <span>Caas Admin</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-page="posts">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    Posts
+                </a>
+                <a href="#" class="nav-item" data-page="media">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    Mídia
+                </a>
+                <a href="#" class="nav-item" data-page="settings">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                        </path>
+                    </svg>
+                    Configurações
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="index.html" target="_blank" class="nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                    Ver Site
+                </a>
+                <a href="#" id="logout-btn" class="nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    Sair
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Posts View -->
+            <div id="view-posts" class="view-section">
+                <div class="page-header">
+                    <h1>Posts</h1>
+                    <button class="btn-primary" id="btn-new-post">
+                        + Novo Post
+                    </button>
+                </div>
+
+                <div class="card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Título</th>
+                                <th>Categoria</th>
+                                <th>Data</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="posts-table-body">
+                            <!-- Posts will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Editor View -->
+            <div id="view-editor" class="view-section" style="display: none;">
+                <div class="page-header">
+                    <h1 id="editor-title-label">Novo Post</h1>
+                    <div class="header-actions">
+                        <button class="btn-secondary" id="btn-cancel-edit">Cancelar</button>
+                        <button class="btn-primary" id="btn-save-post">Salvar Post</button>
+                    </div>
+                </div>
+
+                <div class="editor-grid">
+                    <div class="editor-main">
+                        <div class="form-group">
+                            <input type="text" id="post-title" class="title-input" placeholder="Adicione um título"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <textarea id="post-content" class="content-input"
+                                placeholder="Escreva seu artigo aqui... (HTML suportado)"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="editor-sidebar">
+                        <div class="card">
+                            <h3>Publicação</h3>
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select id="post-status">
+                                    <option value="published">Publicado</option>
+                                    <option value="draft">Rascunho</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Categoria</label>
+                                <select id="post-category">
+                                    <option value="Geral">Geral</option>
+                                    <option value="Dicas">Dicas</option>
+                                    <option value="Serviços">Serviços</option>
+                                    <option value="Novidades">Novidades</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="card" style="margin-top: 1rem;">
+                            <h3>Imagem de Capa</h3>
+                            <div class="form-group">
+                                <input type="url" id="post-image" placeholder="URL da imagem (https://...)"
+                                    style="width: 100%;">
+                                <div id="image-preview" class="image-preview"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other Views (Constructed as needed) -->
+            <div id="view-settings" class="view-section" style="display: none;">
+                <div class="page-header">
+                    <h1>Configurações</h1>
+                </div>
+                <div class="card">
+                    <p>Configurações gerais do site.</p>
+                    <p>Conexão API: <span id="api-status">Verificando...</span></p>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="admin.js"></script>
+</body>
+
+</html>

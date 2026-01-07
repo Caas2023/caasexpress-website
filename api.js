@@ -26,89 +26,182 @@ const API_CONFIG = {
 // DATABASE (LocalStorage simulando banco)
 // ============================================
 
-const BlogDB = {
-    // Inicializa o banco de dados
+// ============================================
+// DATABASE ADAPTERS
+// ============================================
+
+// Adaptador Local (LocalStorage)
+const LocalDB = {
     init() {
         if (!localStorage.getItem('blog_posts')) {
             localStorage.setItem('blog_posts', JSON.stringify([]));
         }
-        if (!localStorage.getItem('blog_categories')) {
-            localStorage.setItem('blog_categories', JSON.stringify([
-                { id: 1, name: 'Dicas', slug: 'dicas' },
-                { id: 2, name: 'Logística', slug: 'logistica' },
-                { id: 3, name: 'Segurança', slug: 'seguranca' },
-                { id: 4, name: 'Serviços', slug: 'servicos' },
-                { id: 5, name: 'Negócios', slug: 'negocios' },
-                { id: 6, name: 'Tecnologia', slug: 'tecnologia' }
-            ]));
-        }
     },
+    getPosts() { return JSON.parse(localStorage.getItem('blog_posts') || '[]'); },
+    savePosts(posts) { localStorage.setItem('blog_posts', JSON.stringify(posts)); }
+};
 
-    // Posts
-    getPosts() {
-        return JSON.parse(localStorage.getItem('blog_posts') || '[]');
-    },
+// Adaptador Remoto (Node.js Server)
+const RemoteDB = {
+    BASE_URL: 'http://localhost:3001/wp-json/wp/v2',
+    SEO_URL: 'http://localhost:3001/wp-json/robo-seo-api-rest/v1',
 
-    getPost(id) {
-        const posts = this.getPosts();
-        return posts.find(p => p.id === id);
-    },
-
-    getPostBySlug(slug) {
-        const posts = this.getPosts();
-        return posts.find(p => p.slug === slug);
-    },
-
-    createPost(post) {
-        const posts = this.getPosts();
-        const newPost = {
-            id: Date.now(),
-            ...post,
-            slug: this.slugify(post.title),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            status: post.status || 'published'
+    headers() {
+        // Tenta pegar credenciais do localStorage ou usa padrão
+        const token = localStorage.getItem('caas_api_token') || API_CONFIG.API_KEY;
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
         };
+    },
+
+    async isAvailable() {
+        try {
+            const res = await fetch(`${this.BASE_URL}/posts?per_page=1`, { method: 'HEAD' });
+            return res.ok;
+        } catch { return false; }
+    },
+
+    async getPosts(params = {}) {
+        const query = new URLSearchParams(params).toString();
+        const res = await fetch(`${this.BASE_URL}/posts?${query}`, { headers: this.headers() });
+        return res.json();
+    },
+
+    async getPost(id) {
+        const res = await fetch(`${this.BASE_URL}/posts/${id}`, { headers: this.headers() });
+        if (!res.ok) return null;
+        return res.json();
+    },
+
+    async createPost(data) {
+        const res = await fetch(`${this.BASE_URL}/posts`, {
+            method: 'POST',
+            headers: this.headers(),
+            body: JSON.stringify(data)
+        });
+        return res.json();
+    },
+
+    async updatePost(id, data) {
+        const res = await fetch(`${this.BASE_URL}/posts/${id}`, {
+            method: 'POST', // WP API aceita POST para update também
+            headers: this.headers(),
+            body: JSON.stringify(data)
+        });
+        return res.json();
+    },
+
+    async deletePost(id) {
+        const res = await fetch(`${this.BASE_URL}/posts/${id}`, {
+            method: 'DELETE',
+            headers: this.headers()
+        });
+        return res.json();
+    }
+};
+
+// Repositório Principal (Decide qual fonte usar)
+const Repository = {
+    useRemote: false,
+
+    async init() {
+        LocalDB.init();
+        // Verifica se o servidor está online
+        this.useRemote = await RemoteDB.isAvailable();
+        console.log(`[CaasAPI] Modo: ${this.useRemote ? 'REMOTO (Server)' : 'LOCAL (Storage)'}`);
+    },
+
+    async getPosts() {
+        if (this.useRemote) {
+            try {
+                const wpPosts = await RemoteDB.getPosts({ status: 'publish' });
+                // Converter formato WP para formato interno simples se necessário
+                return wpPosts.map(this.normalizePost);
+            } catch (e) {
+                console.error('Remote fetch failed, falling back to local', e);
+                return LocalDB.getPosts();
+            }
+        }
+        return LocalDB.getPosts();
+    },
+
+    async getPost(id) {
+        if (this.useRemote) {
+            try {
+                const post = await RemoteDB.getPost(id);
+                return post ? this.normalizePost(post) : null;
+            } catch (e) { return null; }
+        }
+        const posts = LocalDB.getPosts();
+        return posts.find(p => p.id == id);
+    },
+
+    async createPost(post) {
+        if (this.useRemote) {
+            return this.normalizePost(await RemoteDB.createPost(post));
+        }
+        const posts = LocalDB.getPosts();
+        const newPost = { ...post, id: Date.now(), created_at: new Date().toISOString() };
         posts.unshift(newPost);
-        localStorage.setItem('blog_posts', JSON.stringify(posts));
+        LocalDB.savePosts(posts);
         return newPost;
     },
 
-    updatePost(id, data) {
-        const posts = this.getPosts();
-        const index = posts.findIndex(p => p.id === id);
+    async updatePost(id, data) {
+        if (this.useRemote) {
+            return this.normalizePost(await RemoteDB.updatePost(id, data));
+        }
+        const posts = LocalDB.getPosts();
+        const index = posts.findIndex(p => p.id == id);
         if (index === -1) return null;
-
-        posts[index] = {
-            ...posts[index],
-            ...data,
-            updated_at: new Date().toISOString()
-        };
-        localStorage.setItem('blog_posts', JSON.stringify(posts));
+        posts[index] = { ...posts[index], ...data, updated_at: new Date().toISOString() };
+        LocalDB.savePosts(posts);
         return posts[index];
     },
 
-    deletePost(id) {
-        const posts = this.getPosts();
-        const filtered = posts.filter(p => p.id !== id);
-        localStorage.setItem('blog_posts', JSON.stringify(filtered));
+    async deletePost(id) {
+        if (this.useRemote) {
+            return await RemoteDB.deletePost(id);
+        }
+        const posts = LocalDB.getPosts();
+        const filtered = posts.filter(p => p.id != id);
+        LocalDB.savePosts(filtered);
         return true;
     },
 
-    // Categories
-    getCategories() {
-        return JSON.parse(localStorage.getItem('blog_categories') || '[]');
+    // Normaliza dados do WP para o formato esperado pelo frontend
+    normalizePost(wpPost) {
+        // Se já estiver no formato local, retorna
+        if (!wpPost.title.rendered) return wpPost;
+
+        return {
+            id: wpPost.id,
+            title: wpPost.title.rendered,
+            content: wpPost.content.rendered,
+            excerpt: wpPost.excerpt.rendered.replace(/<[^>]*>?/gm, ''), // Strip HTLM tags for excerpt
+            slug: wpPost.slug,
+            created_at: wpPost.date,
+            image: wpPost.featured_media_url || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=400&fit=crop', // Placeholder simplificado
+            category: 'Geral', // WP Categories requereria outro fetch, simplificando
+            status: wpPost.status
+        };
     },
 
-    // Helpers
     slugify(text) {
-        return text
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/(^-|-$)/g, '');
+        return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-');
     }
+};
+
+const BlogDB = {
+    init: () => Repository.init(),
+    getPosts: () => Repository.getPosts(),
+    getPost: (id) => Repository.getPost(id),
+    createPost: (d) => Repository.createPost(d),
+    updatePost: (id, d) => Repository.updatePost(id, d),
+    deletePost: (id) => Repository.deletePost(id),
+    getCategories: () => LocalDB.getPosts().map(p => p.category).filter((v, i, a) => a.indexOf(v) === i), // Simplificado
+    slugify: Repository.slugify
 };
 
 // ============================================
