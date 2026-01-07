@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Blog Caas Express - Dicas sobre entregas, logística e serviços de motoboy em Guarulhos e São Paulo.">
+    <meta name="keywords" content="blog motoboy, dicas entregas, logística guarulhos, motoboy são paulo">
+
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23E63946' rx='15' width='100' height='100'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='50' font-family='Arial' font-weight='bold'%3EC%3C/text%3E%3C/svg%3E">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="blog.css">
+
+    <title>Blog - Caas Express | Dicas e Novidades sobre Entregas</title>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header scrolled" id="header">
+        <div class="container">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">🏍️</div>
+                Caas <span>Express</span>
+            </a>
+
+            <nav class="nav">
+                <ul class="nav-menu" id="nav-menu">
+                    <li><a href="index.html" class="nav-link">Início</a></li>
+                    <li><a href="index.html#servicos" class="nav-link">Serviços</a></li>
+                    <li><a href="index.html#sobre" class="nav-link">Sobre Nós</a></li>
+                    <li><a href="index.html#contato" class="nav-link">Contato</a></li>
+                    <li><a href="blog.html" class="nav-link active">Blog</a></li>
+                </ul>
+
+                <div class="nav-cta" id="nav-cta">
+                    <a href="https://wa.me/5511957248425" class="btn btn-whatsapp" target="_blank">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                        </svg>
+                        WhatsApp
+                    </a>
+                </div>
+
+                <button class="menu-toggle" id="menu-toggle" aria-label="Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Blog Hero -->
+    <section class="blog-hero">
+        <div class="container">
+            <div class="section-subtitle">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
+                </svg>
+                Blog
+            </div>
+            <h1>Dicas e Novidades sobre <span style="color: var(--primary);">Entregas</span></h1>
+            <p>Fique por dentro das últimas notícias, dicas de logística e novidades do mundo das entregas rápidas.</p>
+        </div>
+    </section>
+
+    <!-- Blog Posts -->
+    <section class="blog-section">
+        <div class="container">
+            <div class="blog-grid">
+                <!-- Post 1 -->
+                <article class="blog-card">
+                    <div class="blog-card-image">
+                        <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop"
+                            alt="Motoboy fazendo entrega em Guarulhos">
+                        <span class="blog-category">Dicas</span>
+                    </div>
+                    <div class="blog-card-content">
+                        <div class="blog-meta">
+                            <span class="blog-date">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z" />
+                                </svg>
+                                05 Jan 2026
+                            </span>
+                            <span class="blog-read-time">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                                </svg>
+                                5 min de leitura
+                            </span>
+                        </div>
+                        <h2>Como Escolher o Melhor Serviço de Motoboy em Guarulhos</h2>
+                        <p>Descubra os critérios essenciais para contratar um serviço de motoboy confiável:
+                            pontualidade, seguro de carga, rastreamento e atendimento profissional.</p>
+                        <a href="#" class="blog-read-more">
+                            Ler mais
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                            </svg>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- Post 2 -->
+                <article class="blog-card">
+                    <div class="blog-card-image">
+                        <img src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600&h=400&fit=crop"
+                            alt="Pacotes para entrega">
+                        <span class="blog-category">Logística</span>
+                    </div>
+                    <div class="blog-card-content">
+                        <div class="blog-meta">
+                            <span class="blog-date">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z" />
+                                </svg>
+                                28 Dez 2025
+                            </span>
+                            <span class="blog-read-time">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                                </svg>
+                                4 min de leitura
+                            </span>
+                        </div>
+                        <h2>5 Vantagens de Usar Entrega por Motoboy para sua Empresa</h2>
+                        <p>Conheça os benefícios de terceirizar suas entregas: redução de custos, agilidade,
+                            flexibilidade de horários e foco no core business.</p>
+                        <a href="#" class="blog-read-more">
+                            Ler mais
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                            </svg>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- Post 3 -->
+                <article class="blog-card">
+                    <div class="blog-card-image">
+                        <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=600&h=400&fit=crop"
+                            alt="Motoboy em trânsito">
+                        <span class="blog-category">Segurança</span>
+                    </div>
+                    <div class="blog-card-content">
+                        <div class="blog-meta">
+                            <span class="blog-date">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z" />
+                                </svg>
+                                20 Dez 2025
+                            </span>
+                            <span class="blog-read-time">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                                </svg>
+                                3 min de leitura
+                            </span>
+                        </div>
+                        <h2>A Importância do Seguro de Carga nas Entregas</h2>
+                        <p>Entenda por que o seguro de carga é fundamental para proteger seus produtos durante o
+                            transporte e como escolher a cobertura ideal.</p>
+                        <a href="#" class="blog-read-more">
+                            Ler mais
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                            </svg>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- Post 4 -->
+                <article class="blog-card">
+                    <div class="blog-card-image">
+                        <img src="https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=600&h=400&fit=crop"
+                            alt="Entrega de medicamentos">
+                        <span class="blog-category">Serviços</span>
+                    </div>
+                    <div class="blog-card-content">
+                        <div class="blog-meta">
+                            <span class="blog-date">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z" />
+                                </svg>
+                                15 Dez 2025
+                            </span>
+                            <span class="blog-read-time">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                                </svg>
+                                6 min de leitura
+                            </span>
+                        </div>
+                        <h2>Entrega de Medicamentos: Cuidados e Regulamentações</h2>
+                        <p>Saiba como funciona a entrega de medicamentos por motoboy, regulamentações da ANVISA e
+                            cuidados especiais com produtos sensíveis.</p>
+                        <a href="#" class="blog-read-more">
+                            Ler mais
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                            </svg>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- Post 5 -->
+                <article class="blog-card">
+                    <div class="blog-card-image">
+                        <img src="https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=600&h=400&fit=crop"
+                            alt="Documentos para entrega">
+                        <span class="blog-category">Negócios</span>
+                    </div>
+                    <div class="blog-card-content">
+                        <div class="blog-meta">
+                            <span class="blog-date">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z" />
+                                </svg>
+                                10 Dez 2025
+                            </span>
+                            <span class="blog-read-time">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                                </svg>
+                                4 min de leitura
+                            </span>
+                        </div>
+                        <h2>Nota Fiscal em Serviços de Motoboy: Por que é Importante?</h2>
+                        <p>Descubra a importância da nota fiscal para empresas que contratam serviços de entrega e como
+                            isso impacta sua contabilidade.</p>
+                        <a href="#" class="blog-read-more">
+                            Ler mais
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                            </svg>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- Post 6 -->
+                <article class="blog-card">
+                    <div class="blog-card-image">
+                        <img src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=600&h=400&fit=crop"
+                            alt="Planejamento de rotas">
+                        <span class="blog-category">Tecnologia</span>
+                    </div>
+                    <div class="blog-card-content">
+                        <div class="blog-meta">
+                            <span class="blog-date">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z" />
+                                </svg>
+                                05 Dez 2025
+                            </span>
+                            <span class="blog-read-time">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                                </svg>
+                                5 min de leitura
+                            </span>
+                        </div>
+                        <h2>Como a Tecnologia Está Revolucionando as Entregas por Motoboy</h2>
+                        <p>Rastreamento em tempo real, otimização de rotas e aplicativos: conheça as inovações que estão
+                            transformando o setor de entregas.</p>
+                        <a href="#" class="blog-read-more">
+                            Ler mais
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                            </svg>
+                        </a>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Newsletter Section -->
+            <div class="blog-newsletter">
+                <div class="newsletter-content">
+                    <h3>📧 Receba Nossas Novidades</h3>
+                    <p>Assine nossa newsletter e fique por dentro das últimas dicas sobre entregas e logística.</p>
+                    <form class="newsletter-form">
+                        <input type="email" placeholder="Seu melhor e-mail" required>
+                        <button type="submit" class="btn btn-primary">Inscrever</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="index.html" class="logo">
+                        <div class="logo-icon">🏍️</div>
+                        Caas <span>Express</span>
+                    </a>
+                    <p>
+                        Sua escolha confiável para serviços de motoboy em Guarulhos e São Paulo.
+                        Entregas rápidas, seguras e com emissão de nota fiscal.
+                    </p>
+                    <div class="footer-social">
+                        <a href="https://www.facebook.com/caasexpress" target="_blank" aria-label="Facebook">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" />
+                            </svg>
+                        </a>
+                        <a href="https://instagram.com/caas.express" target="_blank" aria-label="Instagram">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                            </svg>
+                        </a>
+                        <a href="https://www.youtube.com/channel/UC1ZHrYhWbjBCK8bQQnJCUFA" target="_blank"
+                            aria-label="YouTube">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="footer-column">
+                    <h4>Links Rápidos</h4>
+                    <ul class="footer-links">
+                        <li><a href="index.html">Início</a></li>
+                        <li><a href="index.html#servicos">Serviços</a></li>
+                        <li><a href="index.html#sobre">Sobre Nós</a></li>
+                        <li><a href="index.html#contato">Contato</a></li>
+                        <li><a href="blog.html">Blog</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-column">
+                    <h4>Serviços</h4>
+                    <ul class="footer-links">
+                        <li><a href="index.html#servicos">Entrega Expressa</a></li>
+                        <li><a href="index.html#servicos">Entrega Agendada</a></li>
+                        <li><a href="index.html#servicos">Entrega Urgente</a></li>
+                        <li><a href="index.html#servicos">Coleta de Documentos</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-column">
+                    <h4>Áreas Atendidas</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">Guarulhos</a></li>
+                        <li><a href="#">São Paulo - Capital</a></li>
+                        <li><a href="#">ABC Paulista</a></li>
+                        <li><a href="#">Região Metropolitana</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2024 Caas Express. Todos os direitos reservados.</p>
+                <p>Desenvolvido com ❤️ em Guarulhos</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- WhatsApp Floating Button -->
+    <div class="whatsapp-float">
+        <a href="https://wa.me/5511957248425?text=Olá!%20Gostaria%20de%20solicitar%20uma%20entrega." target="_blank"
+            aria-label="Fale conosco pelo WhatsApp">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                    d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+            </svg>
+        </a>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="main.js"></script>
+    <script>
+        // Carregar posts dinamicamente da API
+        document.addEventListener('DOMContentLoaded', async () => {
+            const grid = document.querySelector('.blog-grid');
+
+            // Verificar se há posts no banco
+            const { posts } = CaasAPI.posts.list();
+
+            if (posts.length === 0) {
+                // Importar do WordPress se não houver posts
+                console.log('Importando posts do WordPress...');
+                const results = await CaasAPI.import.fromWordPress();
+                console.log('Posts importados:', results);
+                location.reload();
+                return;
+            }
+
+            // Renderizar posts
+            if (posts.length > 0) {
+                grid.innerHTML = posts.map(post => `
+          <article class="blog-card">
+            <div class="blog-card-image">
+              <img src="${post.image || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop'}" alt="${post.title}">
+              <span class="blog-category">${post.category || 'Serviços'}</span>
+            </div>
+            <div class="blog-card-content">
+              <div class="blog-meta">
+                <span class="blog-date">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
+                  </svg>
+                  ${new Date(post.created_at).toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+              <h2>${post.title}</h2>
+              <p>${post.excerpt}</p>
+              <a href="${post.original_url || '#'}" class="blog-read-more" target="_blank">
+                Ler mais
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+                </svg>
+              </a>
+            </div>
+          </article>
+        `).join('');
+            }
+        });
+    </script>
+</body>
+
+</html>
