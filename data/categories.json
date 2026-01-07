@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "name": "Sem categoria",
+    "slug": "sem-categoria",
+    "description": "",
+    "parent": 0,
+    "count": 0,
+    "date": "2026-01-07T20:41:49.431Z",
+    "date_gmt": "2026-01-07T20:41:49.432Z",
+    "modified": "2026-01-07T20:41:49.432Z",
+    "modified_gmt": "2026-01-07T20:41:49.432Z"
+  },
+  {
+    "id": 2,
+    "name": "Dicas",
+    "slug": "dicas",
+    "description": "Dicas de entregas",
+    "parent": 0,
+    "count": 0,
+    "date": "2026-01-07T20:41:49.433Z",
+    "date_gmt": "2026-01-07T20:41:49.433Z",
+    "modified": "2026-01-07T20:41:49.433Z",
+    "modified_gmt": "2026-01-07T20:41:49.433Z"
+  },
+  {
+    "id": 3,
+    "name": "Serviços",
+    "slug": "servicos",
+    "description": "Nossos serviços",
+    "parent": 0,
+    "count": 0,
+    "date": "2026-01-07T20:41:49.433Z",
+    "date_gmt": "2026-01-07T20:41:49.433Z",
+    "modified": "2026-01-07T20:41:49.433Z",
+    "modified_gmt": "2026-01-07T20:41:49.433Z"
+  },
+  {
+    "id": 4,
+    "name": "Logística",
+    "slug": "logistica",
+    "description": "Logística e transporte",
+    "parent": 0,
+    "count": 0,
+    "date": "2026-01-07T20:41:49.434Z",
+    "date_gmt": "2026-01-07T20:41:49.434Z",
+    "modified": "2026-01-07T20:41:49.434Z",
+    "modified_gmt": "2026-01-07T20:41:49.434Z"
+  },
+  {
+    "id": 5,
+    "name": "Negócios",
+    "slug": "negocios",
+    "description": "Dicas para negócios",
+    "parent": 0,
+    "count": 0,
+    "date": "2026-01-07T20:41:49.434Z",
+    "date_gmt": "2026-01-07T20:41:49.434Z",
+    "modified": "2026-01-07T20:41:49.434Z",
+    "modified_gmt": "2026-01-07T20:41:49.434Z"
+  }
+]
