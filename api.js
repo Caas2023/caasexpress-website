@@ -297,7 +297,32 @@ const WordPressImporter = {
             posts.push({
                 title: post.title,
                 excerpt: post.excerpt,
-                content: post.excerpt, // Pode ser expandido com scraping
+                excerpt: post.excerpt,
+                content: `
+                    <p class="lead">${post.excerpt}</p>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+                    
+                    <h2>A Importância da Agilidade</h2>
+                    <p>No mundo dos negócios atual, a velocidade é essencial. Entregas documentais urgentes exigem profissionais capacitados e comprometidos com prazos.</p>
+                    
+                    <figure>
+                        <img src="${post.image || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=400&fit=crop'}" alt="Entrega Rápida" style="width:100%; border-radius: 8px; margin: 2rem 0;">
+                        <figcaption>Nossos motoboys estão prontos para atender sua demanda.</figcaption>
+                    </figure>
+
+                    <h3>Nossos Diferenciais</h3>
+                    <ul>
+                        <li><strong>Pontualidade:</strong> Compromisso com o horário agendado.</li>
+                        <li><strong>Segurança:</strong> Profissionais verificados e treinados.</li>
+                        <li><strong>Tecnologia:</strong> Rastreamento em tempo real.</li>
+                    </ul>
+
+                    <blockquote>
+                        "A Caas Express revolucionou a forma como lidamos com nossas entregas urgentes. Recomendo fortemente!"
+                    </blockquote>
+
+                    <p>Entre em contato conosco hoje mesmo para saber como podemos ajudar sua empresa a otimizar a logística de documentos.</p>
+                `,
                 category: 'Serviços',
                 image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop',
                 original_url: post.url,
