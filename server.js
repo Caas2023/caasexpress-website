@@ -54,6 +54,15 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads', express.static(CONFIG.UPLOADS_DIR));
 app.use(express.static(__dirname));
 
+// Explicit routes for HTML pages (Vercel compatibility)
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
 // Multer configuration
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, CONFIG.UPLOADS_DIR),
