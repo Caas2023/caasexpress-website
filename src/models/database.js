@@ -166,6 +166,10 @@ class PostsRepository {
             query += ' AND (title LIKE ? OR content LIKE ?)';
             args.push(`%${filters.search}%`, `%${filters.search}%`);
         }
+        if (filters.slug) {
+            query += ' AND slug = ?';
+            args.push(filters.slug);
+        }
 
         query += ' ORDER BY date DESC';
 

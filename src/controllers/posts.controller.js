@@ -45,9 +45,9 @@ function formatPost(post, req) {
 // GET /wp-json/wp/v2/posts
 exports.list = async (req, res) => {
     try {
-        const { per_page = 10, page = 1, status, categories, tags, search, type } = req.query;
+        const { per_page = 10, page = 1, status, categories, tags, search, type, slug } = req.query;
 
-        const filters = { per_page, page, status, search, type };
+        const filters = { per_page, page, status, search, type, slug };
         let posts = await db.posts.getAll(filters);
 
         // Filter by categories/tags (JSON arrays)

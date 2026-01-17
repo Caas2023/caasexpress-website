@@ -118,8 +118,24 @@
                 // Unified Config - Single Source of Truth
                 const apiBase = AppConfig.getApiBaseUrl();
 
-                // Fetch post from real API
-                const response = await fetch(`${apiBase}/wp-json/wp/v2/posts/${postId}`);
+                let response;
+                // If numeric ID, fetch by ID
+                if (/^\d+$/.test(postId)) {
+                    response = await fetch(`${apiBase}/wp-json/wp/v2/posts/${postId}`);
+                }
+                // If slug (string), fetch by slug
+                else {
+                    const slugRes = await fetch(`${apiBase}/wp-json/wp/v2/posts?slug=${postId}`);
+                    if (!slugRes.ok) throw new Error('Post lookup failed');
+                    const results = await slugRes.json();
+                    if (results.length === 0) throw new Error('Post not found by slug');
+
+                    // Mock response object to standardize subsequent handling
+                    response = {
+                        ok: true,
+                        json: async () => results[0]
+                    };
+                }
 
                 if (!response.ok) {
                     throw new Error('Post not found');
