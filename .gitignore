@@ -1,13 +1,4 @@
-# Dependencies
-node_modules/
-
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
+node_modules
+.env
+uploads
+data

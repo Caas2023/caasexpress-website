@@ -15,11 +15,13 @@
  * - POST /wp-json/robo-seo-api-rest/v1/update-meta - Atualizar SEO
  */
 
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const fsPromises = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
@@ -31,16 +33,20 @@ const PORT = process.env.PORT || 3001;
 
 const CONFIG = {
     // Credenciais de API (Application Password style)
-    API_USER: 'admin',
-    API_PASSWORD: 'caas express 2024 api key', // Formato WordPress Application Password
+    API_USER: process.env.API_USER || 'admin',
+    API_PASSWORD: process.env.API_PASSWORD, // Carregado do .env
 
     // Token Bearer alternativo
-    BEARER_TOKEN: 'caas_api_2024_secret_key',
+    BEARER_TOKEN: process.env.BEARER_TOKEN,
 
     // Diretórios
     UPLOADS_DIR: path.join(__dirname, 'uploads'),
     DATA_DIR: path.join(__dirname, 'data')
 };
+
+if (!process.env.API_PASSWORD || !process.env.BEARER_TOKEN) {
+    console.warn('⚠️ AVISO: Credenciais não configuradas no .env. Configure para garantir segurança.');
+}
 
 // Criar diretórios se não existirem
 [CONFIG.UPLOADS_DIR, CONFIG.DATA_DIR].forEach(dir => {
@@ -124,70 +130,84 @@ function authenticate(req, res, next) {
 class Database {
     constructor(name) {
         this.file = path.join(CONFIG.DATA_DIR, `${name}.json`);
-        this.data = this.load();
+        this.cache = null;
+        this.initPromise = this.load();
     }
 
-    load() {
+    async load() {
         try {
-            if (fs.existsSync(this.file)) {
-                return JSON.parse(fs.readFileSync(this.file, 'utf-8'));
-            }
+            await fsPromises.access(this.file);
+            const data = await fsPromises.readFile(this.file, 'utf-8');
+            this.cache = JSON.parse(data);
         } catch (e) {
-            console.error(`Error loading ${this.file}:`, e);
+            if (e.code === 'ENOENT') {
+                this.cache = [];
+                await this.save(); // Criar arquivo vazio
+            } else {
+                console.error(`Error loading ${this.file}:`, e);
+                this.cache = [];
+            }
         }
-        return [];
+        return this.cache;
     }
 
-    save() {
-        fs.writeFileSync(this.file, JSON.stringify(this.data, null, 2));
+    async save() {
+        // Atomic write pattern could be better, but basic async write is step 1
+        await fsPromises.writeFile(this.file, JSON.stringify(this.cache, null, 2));
     }
 
-    getAll() {
-        return this.data;
+    async getAll() {
+        if (!this.cache) await this.load();
+        return this.cache;
     }
 
-    getById(id) {
-        return this.data.find(item => item.id === parseInt(id));
+    async getById(id) {
+        if (!this.cache) await this.load();
+        return this.cache.find(item => item.id === parseInt(id));
     }
 
-    create(item) {
+    async create(item) {
+        if (!this.cache) await this.load();
         const newItem = {
-            id: this.data.length > 0 ? Math.max(...this.data.map(i => i.id)) + 1 : 1,
+            id: this.cache.length > 0 ? Math.max(...this.cache.map(i => i.id)) + 1 : 1,
             ...item,
             date: item.date || new Date().toISOString(),
             date_gmt: item.date_gmt || new Date().toISOString(),
             modified: new Date().toISOString(),
             modified_gmt: new Date().toISOString()
         };
-        this.data.push(newItem);
-        this.save();
+        this.cache.push(newItem);
+        await this.save();
         return newItem;
     }
 
-    update(id, updates) {
-        const index = this.data.findIndex(item => item.id === parseInt(id));
+    async update(id, updates) {
+        if (!this.cache) await this.load();
+        const index = this.cache.findIndex(item => item.id === parseInt(id));
         if (index === -1) return null;
 
-        this.data[index] = {
-            ...this.data[index],
+        this.cache[index] = {
+            ...this.cache[index],
             ...updates,
             modified: new Date().toISOString(),
             modified_gmt: new Date().toISOString()
         };
-        this.save();
-        return this.data[index];
+        await this.save();
+        return this.cache[index];
     }
 
-    delete(id) {
-        const index = this.data.findIndex(item => item.id === parseInt(id));
+    async delete(id) {
+        if (!this.cache) await this.load();
+        const index = this.cache.findIndex(item => item.id === parseInt(id));
         if (index === -1) return false;
 
-        this.data.splice(index, 1);
-        this.save();
+        this.cache.splice(index, 1);
+        await this.save();
         return true;
     }
 }
 
+// Inicializar bancos de dados
 // Inicializar bancos de dados
 const postsDB = new Database('posts');
 const mediaDB = new Database('media');
@@ -195,16 +215,21 @@ const categoriesDB = new Database('categories');
 const tagsDB = new Database('tags');
 
 // Inicializar categorias padrão se vazio
-if (categoriesDB.getAll().length === 0) {
-    const defaultCategories = [
-        { id: 1, name: 'Sem categoria', slug: 'sem-categoria', description: '', parent: 0, count: 0 },
-        { id: 2, name: 'Dicas', slug: 'dicas', description: 'Dicas de entregas', parent: 0, count: 0 },
-        { id: 3, name: 'Serviços', slug: 'servicos', description: 'Nossos serviços', parent: 0, count: 0 },
-        { id: 4, name: 'Logística', slug: 'logistica', description: 'Logística e transporte', parent: 0, count: 0 },
-        { id: 5, name: 'Negócios', slug: 'negocios', description: 'Dicas para negócios', parent: 0, count: 0 }
-    ];
-    defaultCategories.forEach(cat => categoriesDB.create(cat));
-}
+(async () => {
+    const cats = await categoriesDB.getAll();
+    if (cats.length === 0) {
+        const defaultCategories = [
+            { id: 1, name: 'Sem categoria', slug: 'sem-categoria', description: '', parent: 0, count: 0 },
+            { id: 2, name: 'Dicas', slug: 'dicas', description: 'Dicas de entregas', parent: 0, count: 0 },
+            { id: 3, name: 'Serviços', slug: 'servicos', description: 'Nossos serviços', parent: 0, count: 0 },
+            { id: 4, name: 'Logística', slug: 'logistica', description: 'Logística e transporte', parent: 0, count: 0 },
+            { id: 5, name: 'Negócios', slug: 'negocios', description: 'Dicas para negócios', parent: 0, count: 0 }
+        ];
+        for (const cat of defaultCategories) {
+            await categoriesDB.create(cat);
+        }
+    }
+})();
 
 // ============================================
 // HELPERS
@@ -285,9 +310,9 @@ function formatMedia(media, req) {
 // ============================================
 
 // GET /wp-json/wp/v2/posts
-app.get('/wp-json/wp/v2/posts', authenticate, (req, res) => {
+app.get('/wp-json/wp/v2/posts', authenticate, async (req, res) => {
     const { per_page = 10, page = 1, status, categories, tags, search } = req.query;
-    let posts = postsDB.getAll();
+    let posts = await postsDB.getAll();
 
     // Filtros
     if (status) posts = posts.filter(p => p.status === status);
@@ -316,8 +341,8 @@ app.get('/wp-json/wp/v2/posts', authenticate, (req, res) => {
 });
 
 // GET /wp-json/wp/v2/posts/:id
-app.get('/wp-json/wp/v2/posts/:id', authenticate, (req, res) => {
-    const post = postsDB.getById(req.params.id);
+app.get('/wp-json/wp/v2/posts/:id', authenticate, async (req, res) => {
+    const post = await postsDB.getById(req.params.id);
     if (!post) {
         return res.status(404).json({
             code: 'rest_post_invalid_id',
@@ -329,10 +354,10 @@ app.get('/wp-json/wp/v2/posts/:id', authenticate, (req, res) => {
 });
 
 // POST /wp-json/wp/v2/posts
-app.post('/wp-json/wp/v2/posts', authenticate, (req, res) => {
+app.post('/wp-json/wp/v2/posts', authenticate, async (req, res) => {
     const { title, content, excerpt, status, categories, tags, featured_media, author, date, slug, type } = req.body;
 
-    const post = postsDB.create({
+    const post = await postsDB.create({
         title: title || '',
         content: content || '',
         excerpt: excerpt || '',
@@ -352,8 +377,8 @@ app.post('/wp-json/wp/v2/posts', authenticate, (req, res) => {
 });
 
 // PUT/POST /wp-json/wp/v2/posts/:id
-app.put('/wp-json/wp/v2/posts/:id', authenticate, (req, res) => {
-    const post = postsDB.update(req.params.id, req.body);
+app.put('/wp-json/wp/v2/posts/:id', authenticate, async (req, res) => {
+    const post = await postsDB.update(req.params.id, req.body);
     if (!post) {
         return res.status(404).json({
             code: 'rest_post_invalid_id',
@@ -365,8 +390,8 @@ app.put('/wp-json/wp/v2/posts/:id', authenticate, (req, res) => {
     res.json(formatPost(post, req));
 });
 
-app.post('/wp-json/wp/v2/posts/:id', authenticate, (req, res) => {
-    const post = postsDB.update(req.params.id, req.body);
+app.post('/wp-json/wp/v2/posts/:id', authenticate, async (req, res) => {
+    const post = await postsDB.update(req.params.id, req.body);
     if (!post) {
         return res.status(404).json({
             code: 'rest_post_invalid_id',
@@ -379,8 +404,8 @@ app.post('/wp-json/wp/v2/posts/:id', authenticate, (req, res) => {
 });
 
 // DELETE /wp-json/wp/v2/posts/:id
-app.delete('/wp-json/wp/v2/posts/:id', authenticate, (req, res) => {
-    const post = postsDB.getById(req.params.id);
+app.delete('/wp-json/wp/v2/posts/:id', authenticate, async (req, res) => {
+    const post = await postsDB.getById(req.params.id);
     if (!post) {
         return res.status(404).json({
             code: 'rest_post_invalid_id',
@@ -389,7 +414,7 @@ app.delete('/wp-json/wp/v2/posts/:id', authenticate, (req, res) => {
         });
     }
 
-    postsDB.delete(req.params.id);
+    await postsDB.delete(req.params.id);
     console.log(`[DELETE] Deletado: "${post.title}" (ID: ${post.id})`);
     res.json({ deleted: true, previous: formatPost(post, req) });
 });
@@ -399,14 +424,14 @@ app.delete('/wp-json/wp/v2/posts/:id', authenticate, (req, res) => {
 // ============================================
 
 // GET /wp-json/wp/v2/media
-app.get('/wp-json/wp/v2/media', authenticate, (req, res) => {
-    const media = mediaDB.getAll();
+app.get('/wp-json/wp/v2/media', authenticate, async (req, res) => {
+    const media = await mediaDB.getAll();
     res.json(media.map(m => formatMedia(m, req)));
 });
 
 // GET /wp-json/wp/v2/media/:id
-app.get('/wp-json/wp/v2/media/:id', authenticate, (req, res) => {
-    const media = mediaDB.getById(req.params.id);
+app.get('/wp-json/wp/v2/media/:id', authenticate, async (req, res) => {
+    const media = await mediaDB.getById(req.params.id);
     if (!media) {
         return res.status(404).json({
             code: 'rest_post_invalid_id',
@@ -418,7 +443,7 @@ app.get('/wp-json/wp/v2/media/:id', authenticate, (req, res) => {
 });
 
 // POST /wp-json/wp/v2/media (Upload)
-app.post('/wp-json/wp/v2/media', authenticate, upload.single('file'), (req, res) => {
+app.post('/wp-json/wp/v2/media', authenticate, upload.single('file'), async (req, res) => {
     if (!req.file) {
         // Se não houver arquivo, pode ser um upload binário direto
         // Verificar content-disposition header
@@ -438,7 +463,7 @@ app.post('/wp-json/wp/v2/media', authenticate, upload.single('file'), (req, res)
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const filename = req.file ? req.file.filename : `upload-${Date.now()}.jpg`;
 
-    const media = mediaDB.create({
+    const media = await mediaDB.create({
         title: req.file?.originalname || filename,
         slug: slugify(req.file?.originalname || filename),
         source_url: `${baseUrl}/uploads/${filename}`,
@@ -455,10 +480,10 @@ app.post('/wp-json/wp/v2/media', authenticate, upload.single('file'), (req, res)
 });
 
 // POST /wp-json/wp/v2/media/:id (Atualizar atributos)
-app.post('/wp-json/wp/v2/media/:id', authenticate, (req, res) => {
+app.post('/wp-json/wp/v2/media/:id', authenticate, async (req, res) => {
     const { alt_text, title, caption, description } = req.body;
 
-    const media = mediaDB.update(req.params.id, {
+    const media = await mediaDB.update(req.params.id, {
         alt_text: alt_text || '',
         title: title || '',
         caption: caption || '',
@@ -494,14 +519,14 @@ app.post('/wp-json/wp/v2/media/', authenticate, (req, res, next) => {
         // Coletar dados binários
         const chunks = [];
         req.on('data', chunk => chunks.push(chunk));
-        req.on('end', () => {
+        req.on('end', async () => {
             const buffer = Buffer.concat(chunks);
-            fs.writeFileSync(filepath, buffer);
+            fs.writeFileSync(filepath, buffer); // Using sync for file write buffer for consistency with simple stream handler, but could be async
 
             const baseUrl = `${req.protocol}://${req.get('host')}`;
             const savedFilename = path.basename(filepath);
 
-            const media = mediaDB.create({
+            const media = await mediaDB.create({
                 title: filename,
                 slug: slugify(filename),
                 source_url: `${baseUrl}/uploads/${savedFilename}`,
@@ -526,8 +551,8 @@ app.post('/wp-json/wp/v2/media/', authenticate, (req, res, next) => {
 // ============================================
 
 // GET /wp-json/wp/v2/categories
-app.get('/wp-json/wp/v2/categories', authenticate, (req, res) => {
-    const categories = categoriesDB.getAll();
+app.get('/wp-json/wp/v2/categories', authenticate, async (req, res) => {
+    const categories = await categoriesDB.getAll();
     res.json(categories.map(cat => ({
         id: cat.id,
         count: cat.count || 0,
@@ -542,10 +567,10 @@ app.get('/wp-json/wp/v2/categories', authenticate, (req, res) => {
 });
 
 // POST /wp-json/wp/v2/categories
-app.post('/wp-json/wp/v2/categories', authenticate, (req, res) => {
+app.post('/wp-json/wp/v2/categories', authenticate, async (req, res) => {
     const { name, slug, description, parent } = req.body;
 
-    const category = categoriesDB.create({
+    const category = await categoriesDB.create({
         name: name || '',
         slug: slug || slugify(name || ''),
         description: description || '',
@@ -562,8 +587,8 @@ app.post('/wp-json/wp/v2/categories', authenticate, (req, res) => {
 // ============================================
 
 // GET /wp-json/wp/v2/tags
-app.get('/wp-json/wp/v2/tags', authenticate, (req, res) => {
-    const tags = tagsDB.getAll();
+app.get('/wp-json/wp/v2/tags', authenticate, async (req, res) => {
+    const tags = await tagsDB.getAll();
     res.json(tags.map(tag => ({
         id: tag.id,
         count: tag.count || 0,
@@ -577,10 +602,10 @@ app.get('/wp-json/wp/v2/tags', authenticate, (req, res) => {
 });
 
 // POST /wp-json/wp/v2/tags
-app.post('/wp-json/wp/v2/tags', authenticate, (req, res) => {
+app.post('/wp-json/wp/v2/tags', authenticate, async (req, res) => {
     const { name, slug, description } = req.body;
 
-    const tag = tagsDB.create({
+    const tag = await tagsDB.create({
         name: name || '',
         slug: slug || slugify(name || ''),
         description: description || '',
@@ -596,7 +621,7 @@ app.post('/wp-json/wp/v2/tags', authenticate, (req, res) => {
 // ============================================
 
 // POST /wp-json/robo-seo-api-rest/v1/update-meta
-app.post('/wp-json/robo-seo-api-rest/v1/update-meta', authenticate, (req, res) => {
+app.post('/wp-json/robo-seo-api-rest/v1/update-meta', authenticate, async (req, res) => {
     const {
         post_id,
         keyword,
@@ -609,7 +634,7 @@ app.post('/wp-json/robo-seo-api-rest/v1/update-meta', authenticate, (req, res) =
         blog_posting_data
     } = req.body;
 
-    const post = postsDB.getById(post_id);
+    const post = await postsDB.getById(post_id);
     if (!post) {
         return res.status(404).json({
             success: false,
@@ -630,7 +655,7 @@ app.post('/wp-json/robo-seo-api-rest/v1/update-meta', authenticate, (req, res) =
         updated_at: new Date().toISOString()
     };
 
-    postsDB.update(post_id, { meta: { ...post.meta, seo: seoMeta } });
+    await postsDB.update(post_id, { meta: { ...post.meta, seo: seoMeta } });
 
     console.log(`[SEO] Meta atualizado para post ${post_id}: "${keyword}"`);
 
@@ -706,13 +731,16 @@ app.get('/wp-json', (req, res) => {
 // HEALTH CHECK
 // ============================================
 
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
+    const rPosts = await postsDB.getAll();
+    const rMedia = await mediaDB.getAll();
+    const rCats = await categoriesDB.getAll();
     res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),
-        posts: postsDB.getAll().length,
-        media: mediaDB.getAll().length,
-        categories: categoriesDB.getAll().length
+        posts: rPosts.length,
+        media: rMedia.length,
+        categories: rCats.length
     });
 });
 
@@ -730,8 +758,8 @@ app.listen(PORT, () => {
     console.log('╠══════════════════════════════════════════════════════════════╣');
     console.log('║  🔑 CREDENCIAIS PARA N8N:                                    ║');
     console.log(`║  • Usuário:      ${CONFIG.API_USER}                                  ║`);
-    console.log(`║  • Senha:        ${CONFIG.API_PASSWORD}              ║`);
-    console.log(`║  • Bearer:       ${CONFIG.BEARER_TOKEN}            ║`);
+    console.log('║  • Senha:        (oculto em logs)                            ║');
+    console.log('║  • Bearer:       (oculto em logs)                            ║');
     console.log('╠══════════════════════════════════════════════════════════════╣');
     console.log('║  📚 ENDPOINTS DISPONÍVEIS:                                   ║');
     console.log('║  • POST /wp-json/wp/v2/posts     - Criar post               ║');

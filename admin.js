@@ -34,17 +34,38 @@ const AdminApp = {
     checkAuth() { if (this.isAuthenticated()) this.showDashboard(); else this.showLogin(); },
 
     setupLogin() {
-        document.getElementById('login-form').addEventListener('submit', (e) => {
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const u = document.getElementById('username').value;
             const p = document.getElementById('password').value;
-            // Simplified Auth Check
-            if ((u === 'admin' && p === 'caas@express2024') || localStorage.getItem('caas_api_token')) {
-                localStorage.setItem('caas_admin_auth', 'true');
-                if (!localStorage.getItem('caas_api_token')) localStorage.setItem('caas_api_token', btoa(u + ':' + p));
-                location.reload();
-            } else {
+            const btn = e.target.querySelector('button');
+            const originalText = btn.textContent;
+
+            btn.textContent = 'Verificando...';
+            btn.disabled = true;
+
+            try {
+                // Tenta autenticar via API
+                const token = btoa(u + ':' + p);
+                const res = await fetch('/wp-json/wp/v2/users/me', {
+                    headers: { 'Authorization': `Basic ${token}` }
+                });
+
+                if (res.ok) {
+                    localStorage.setItem('caas_admin_auth', 'true');
+                    localStorage.setItem('caas_api_token', token); // Salva token Basic Auth
+                    location.reload();
+                } else {
+                    document.getElementById('login-error').style.display = 'block';
+                    document.getElementById('login-error').textContent = 'Credenciais inválidas.';
+                }
+            } catch (err) {
+                console.error(err);
                 document.getElementById('login-error').style.display = 'block';
+                document.getElementById('login-error').textContent = 'Erro de conexão com o servidor.';
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
             }
         });
         document.getElementById('logout-btn').addEventListener('click', () => {
