@@ -51,17 +51,47 @@ if (!process.env.VERCEL) {
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use('/uploads', express.static(CONFIG.UPLOADS_DIR));
-app.use(express.static(__dirname));
 
-// Explicit routes for HTML pages (Vercel compatibility)
+// Static files - serve CSS, JS, and assets with correct MIME types
+app.use('/uploads', express.static(CONFIG.UPLOADS_DIR));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
+// Explicit routes for static files (Vercel compatibility)
+app.get('/index.css', (req, res) => {
+    res.type('text/css').sendFile(path.join(__dirname, 'index.css'));
+});
+app.get('/admin.css', (req, res) => {
+    res.type('text/css').sendFile(path.join(__dirname, 'admin.css'));
+});
+app.get('/blog.css', (req, res) => {
+    res.type('text/css').sendFile(path.join(__dirname, 'blog.css'));
+});
+app.get('/main.js', (req, res) => {
+    res.type('application/javascript').sendFile(path.join(__dirname, 'main.js'));
+});
+app.get('/admin.js', (req, res) => {
+    res.type('application/javascript').sendFile(path.join(__dirname, 'admin.js'));
+});
+app.get('/api.js', (req, res) => {
+    res.type('application/javascript').sendFile(path.join(__dirname, 'api.js'));
+});
+
+// HTML pages
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
-
 app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
+app.get('/blog', (req, res) => {
+    res.sendFile(path.join(__dirname, 'blog.html'));
+});
+app.get('/post', (req, res) => {
+    res.sendFile(path.join(__dirname, 'post.html'));
+});
+
+// Fallback static middleware
+app.use(express.static(__dirname));
 
 // Multer configuration
 const storage = multer.diskStorage({
