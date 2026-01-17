@@ -35,12 +35,14 @@ if (!process.env.API_PASSWORD || !process.env.BEARER_TOKEN) {
     console.warn('⚠️ AVISO: Credenciais não configuradas no .env. Configure para garantir segurança.');
 }
 
-// Create directories if they don't exist
-[CONFIG.UPLOADS_DIR, CONFIG.DATA_DIR].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-});
+// Create directories if they don't exist (skip on Vercel - read-only filesystem)
+if (!process.env.VERCEL) {
+    [CONFIG.UPLOADS_DIR, CONFIG.DATA_DIR].forEach(dir => {
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+    });
+}
 
 // ============================================
 // MIDDLEWARE
