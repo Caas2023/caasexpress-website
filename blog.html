@@ -208,6 +208,8 @@
             const grid = document.getElementById('blog-grid');
 
             try {
+                // Buscar posts da API real
+                const response = await fetch('/wp-json/wp/v2/posts?status=publish&per_page=12');
                 if (!response.ok) throw new Error('Falha ao buscar posts');
                 const posts = await response.json();
 
