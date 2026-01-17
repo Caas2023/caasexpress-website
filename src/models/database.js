@@ -6,19 +6,26 @@
 const { createClient } = require('@libsql/client');
 
 let db = null;
+let dbInitialized = false;
 
 // Initialize database connection
 async function initDatabase() {
-    if (db) return db;
+    if (db && dbInitialized) return db;
 
     // Check for Turso credentials
     const url = process.env.TURSO_DATABASE_URL;
     const authToken = process.env.TURSO_AUTH_TOKEN;
 
     if (!url || !authToken) {
+        // Check if we're in Vercel production
+        if (process.env.VERCEL) {
+            console.error('❌ ERRO: TURSO_DATABASE_URL e TURSO_AUTH_TOKEN são obrigatórios no Vercel!');
+            console.error('   Configure as variáveis de ambiente em: https://vercel.com/dashboard → Settings → Environment Variables');
+            throw new Error('Turso credentials required in production. See docs: https://turso.tech');
+        }
         console.warn('⚠️ Turso credentials not configured. Using in-memory database (data will not persist).');
-        // Fallback to in-memory for local development
-        db = createClient({ url: ':memory:' });
+        // Fallback to local SQLite file for development
+        db = createClient({ url: 'file:./data/local.db' });
     } else {
         db = createClient({ url, authToken });
         console.log('✅ Connected to Turso database');
@@ -108,6 +115,7 @@ async function initDatabase() {
         }
     }
 
+    dbInitialized = true;
     return db;
 }
 
