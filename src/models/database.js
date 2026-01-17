@@ -1,107 +1,149 @@
 /**
- * SQLite Database Module
- * Replaces JSON file storage with SQLite for better performance and data integrity
+ * SQLite Database Module (sql.js - Serverless Compatible)
+ * Works on Vercel, Netlify, and other serverless platforms
  */
 
-const Database = require('better-sqlite3');
+const initSqlJs = require('sql.js');
 const path = require('path');
 const fs = require('fs');
 
 const DATA_DIR = path.join(__dirname, '..', '..', 'data');
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+const DB_PATH = path.join(DATA_DIR, 'database.sqlite');
+
+let db = null;
+let SQL = null;
+
+// Initialize database
+async function initDatabase() {
+    if (db) return db;
+
+    SQL = await initSqlJs();
+
+    // Create data directory if needed
+    if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+
+    // Load existing database or create new
+    try {
+        if (fs.existsSync(DB_PATH)) {
+            const buffer = fs.readFileSync(DB_PATH);
+            db = new SQL.Database(buffer);
+        } else {
+            db = new SQL.Database();
+        }
+    } catch (e) {
+        console.log('Creating new database');
+        db = new SQL.Database();
+    }
+
+    // Create tables
+    db.run(`
+        CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL DEFAULT '',
+            content TEXT DEFAULT '',
+            excerpt TEXT DEFAULT '',
+            slug TEXT UNIQUE,
+            status TEXT DEFAULT 'draft',
+            type TEXT DEFAULT 'post',
+            author INTEGER DEFAULT 1,
+            featured_media INTEGER DEFAULT 0,
+            categories TEXT DEFAULT '[]',
+            tags TEXT DEFAULT '[]',
+            meta TEXT DEFAULT '{}',
+            date TEXT DEFAULT CURRENT_TIMESTAMP,
+            date_gmt TEXT DEFAULT CURRENT_TIMESTAMP,
+            modified TEXT DEFAULT CURRENT_TIMESTAMP,
+            modified_gmt TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS media (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT DEFAULT '',
+            slug TEXT,
+            source_url TEXT,
+            file TEXT,
+            mime_type TEXT DEFAULT 'image/jpeg',
+            alt_text TEXT DEFAULT '',
+            caption TEXT DEFAULT '',
+            description TEXT DEFAULT '',
+            author INTEGER DEFAULT 1,
+            width INTEGER DEFAULT 1200,
+            height INTEGER DEFAULT 630,
+            date TEXT DEFAULT CURRENT_TIMESTAMP,
+            date_gmt TEXT DEFAULT CURRENT_TIMESTAMP,
+            modified TEXT DEFAULT CURRENT_TIMESTAMP,
+            modified_gmt TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            slug TEXT UNIQUE,
+            description TEXT DEFAULT '',
+            parent INTEGER DEFAULT 0,
+            count INTEGER DEFAULT 0,
+            date TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            slug TEXT UNIQUE,
+            description TEXT DEFAULT '',
+            count INTEGER DEFAULT 0,
+            date TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Seed default categories
+    const catCount = db.exec('SELECT COUNT(*) as count FROM categories')[0];
+    if (!catCount || catCount.values[0][0] === 0) {
+        const defaultCategories = [
+            ['Sem categoria', 'sem-categoria', '', 0, 0],
+            ['Dicas', 'dicas', 'Dicas de entregas', 0, 0],
+            ['Serviços', 'servicos', 'Nossos serviços', 0, 0],
+            ['Logística', 'logistica', 'Logística e transporte', 0, 0],
+            ['Negócios', 'negocios', 'Dicas para negócios', 0, 0]
+        ];
+        for (const cat of defaultCategories) {
+            db.run('INSERT INTO categories (name, slug, description, parent, count) VALUES (?, ?, ?, ?, ?)', cat);
+        }
+    }
+
+    saveDatabase();
+    return db;
 }
 
-const db = new Database(path.join(DATA_DIR, 'database.sqlite'));
+function saveDatabase() {
+    if (db) {
+        const data = db.export();
+        const buffer = Buffer.from(data);
+        fs.writeFileSync(DB_PATH, buffer);
+    }
+}
 
-// Enable WAL mode for better concurrent read performance
-db.pragma('journal_mode = WAL');
+function getDb() {
+    if (!db) throw new Error('Database not initialized. Call initDatabase() first.');
+    return db;
+}
 
-// ============================================
-// SCHEMA INITIALIZATION
-// ============================================
-
-db.exec(`
-    CREATE TABLE IF NOT EXISTS posts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL DEFAULT '',
-        content TEXT DEFAULT '',
-        excerpt TEXT DEFAULT '',
-        slug TEXT UNIQUE,
-        status TEXT DEFAULT 'draft',
-        type TEXT DEFAULT 'post',
-        author INTEGER DEFAULT 1,
-        featured_media INTEGER DEFAULT 0,
-        categories TEXT DEFAULT '[]',
-        tags TEXT DEFAULT '[]',
-        meta TEXT DEFAULT '{}',
-        date TEXT DEFAULT CURRENT_TIMESTAMP,
-        date_gmt TEXT DEFAULT CURRENT_TIMESTAMP,
-        modified TEXT DEFAULT CURRENT_TIMESTAMP,
-        modified_gmt TEXT DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS media (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT DEFAULT '',
-        slug TEXT,
-        source_url TEXT,
-        file TEXT,
-        mime_type TEXT DEFAULT 'image/jpeg',
-        alt_text TEXT DEFAULT '',
-        caption TEXT DEFAULT '',
-        description TEXT DEFAULT '',
-        author INTEGER DEFAULT 1,
-        width INTEGER DEFAULT 1200,
-        height INTEGER DEFAULT 630,
-        date TEXT DEFAULT CURRENT_TIMESTAMP,
-        date_gmt TEXT DEFAULT CURRENT_TIMESTAMP,
-        modified TEXT DEFAULT CURRENT_TIMESTAMP,
-        modified_gmt TEXT DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS categories (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        slug TEXT UNIQUE,
-        description TEXT DEFAULT '',
-        parent INTEGER DEFAULT 0,
-        count INTEGER DEFAULT 0,
-        date TEXT DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS tags (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        slug TEXT UNIQUE,
-        description TEXT DEFAULT '',
-        count INTEGER DEFAULT 0,
-        date TEXT DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug);
-    CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status);
-    CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
-`);
-
-// ============================================
-// SEED DEFAULT CATEGORIES
-// ============================================
-
-const catCount = db.prepare('SELECT COUNT(*) as count FROM categories').get();
-if (catCount.count === 0) {
-    const insertCat = db.prepare('INSERT INTO categories (name, slug, description, parent, count) VALUES (?, ?, ?, ?, ?)');
-    const defaultCategories = [
-        ['Sem categoria', 'sem-categoria', '', 0, 0],
-        ['Dicas', 'dicas', 'Dicas de entregas', 0, 0],
-        ['Serviços', 'servicos', 'Nossos serviços', 0, 0],
-        ['Logística', 'logistica', 'Logística e transporte', 0, 0],
-        ['Negócios', 'negocios', 'Dicas para negócios', 0, 0]
-    ];
-    const insertMany = db.transaction((cats) => {
-        for (const cat of cats) insertCat.run(...cat);
+// Helper to convert sql.js result to array of objects
+function toObjects(result) {
+    if (!result || result.length === 0) return [];
+    const [{ columns, values }] = result;
+    return values.map(row => {
+        const obj = {};
+        columns.forEach((col, i) => obj[col] = row[i]);
+        return obj;
     });
-    insertMany(defaultCategories);
 }
 
 // ============================================
@@ -137,13 +179,24 @@ class PostsRepository {
             }
         }
 
-        const rows = db.prepare(query).all(...params);
+        const stmt = getDb().prepare(query);
+        if (params.length) stmt.bind(params);
+        const rows = [];
+        while (stmt.step()) rows.push(stmt.getAsObject());
+        stmt.free();
         return rows.map(this._parseRow);
     }
 
     getById(id) {
-        const row = db.prepare('SELECT * FROM posts WHERE id = ?').get(id);
-        return row ? this._parseRow(row) : null;
+        const stmt = getDb().prepare('SELECT * FROM posts WHERE id = ?');
+        stmt.bind([parseInt(id)]);
+        if (stmt.step()) {
+            const row = stmt.getAsObject();
+            stmt.free();
+            return this._parseRow(row);
+        }
+        stmt.free();
+        return null;
     }
 
     count(filters = {}) {
@@ -157,16 +210,16 @@ class PostsRepository {
             query += ' AND type = ?';
             params.push(filters.type);
         }
-        return db.prepare(query).get(...params).count;
+        const result = getDb().exec(query, params);
+        return result.length ? result[0].values[0][0] : 0;
     }
 
     create(data) {
         const now = new Date().toISOString();
-        const stmt = db.prepare(`
+        getDb().run(`
             INSERT INTO posts (title, content, excerpt, slug, status, type, author, featured_media, categories, tags, meta, date, date_gmt, modified, modified_gmt)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-        const result = stmt.run(
+        `, [
             data.title || '',
             data.content || '',
             data.excerpt || '',
@@ -182,8 +235,11 @@ class PostsRepository {
             data.date_gmt || now,
             now,
             now
-        );
-        return this.getById(result.lastInsertRowid);
+        ]);
+        saveDatabase();
+        const result = getDb().exec('SELECT last_insert_rowid() as id');
+        const id = result[0].values[0][0];
+        return this.getById(id);
     }
 
     update(id, data) {
@@ -193,14 +249,13 @@ class PostsRepository {
         const now = new Date().toISOString();
         const merged = { ...existing, ...data };
 
-        const stmt = db.prepare(`
+        getDb().run(`
             UPDATE posts SET
                 title = ?, content = ?, excerpt = ?, slug = ?, status = ?, type = ?,
                 author = ?, featured_media = ?, categories = ?, tags = ?, meta = ?,
                 modified = ?, modified_gmt = ?
             WHERE id = ?
-        `);
-        stmt.run(
+        `, [
             merged.title,
             merged.content,
             merged.excerpt,
@@ -214,14 +269,16 @@ class PostsRepository {
             JSON.stringify(merged.meta),
             now,
             now,
-            id
-        );
+            parseInt(id)
+        ]);
+        saveDatabase();
         return this.getById(id);
     }
 
     delete(id) {
-        const result = db.prepare('DELETE FROM posts WHERE id = ?').run(id);
-        return result.changes > 0;
+        getDb().run('DELETE FROM posts WHERE id = ?', [parseInt(id)]);
+        saveDatabase();
+        return true;
     }
 
     _parseRow(row) {
@@ -236,20 +293,31 @@ class PostsRepository {
 
 class MediaRepository {
     getAll() {
-        return db.prepare('SELECT * FROM media ORDER BY date DESC').all();
+        const stmt = getDb().prepare('SELECT * FROM media ORDER BY date DESC');
+        const rows = [];
+        while (stmt.step()) rows.push(stmt.getAsObject());
+        stmt.free();
+        return rows;
     }
 
     getById(id) {
-        return db.prepare('SELECT * FROM media WHERE id = ?').get(id);
+        const stmt = getDb().prepare('SELECT * FROM media WHERE id = ?');
+        stmt.bind([parseInt(id)]);
+        if (stmt.step()) {
+            const row = stmt.getAsObject();
+            stmt.free();
+            return row;
+        }
+        stmt.free();
+        return null;
     }
 
     create(data) {
         const now = new Date().toISOString();
-        const stmt = db.prepare(`
+        getDb().run(`
             INSERT INTO media (title, slug, source_url, file, mime_type, alt_text, caption, description, author, date, date_gmt, modified, modified_gmt)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-        const result = stmt.run(
+        `, [
             data.title || '',
             data.slug || '',
             data.source_url || '',
@@ -260,8 +328,11 @@ class MediaRepository {
             data.description || '',
             data.author || 1,
             now, now, now, now
-        );
-        return this.getById(result.lastInsertRowid);
+        ]);
+        saveDatabase();
+        const result = getDb().exec('SELECT last_insert_rowid() as id');
+        const id = result[0].values[0][0];
+        return this.getById(id);
     }
 
     update(id, data) {
@@ -269,61 +340,96 @@ class MediaRepository {
         if (!existing) return null;
 
         const now = new Date().toISOString();
-        const stmt = db.prepare(`
+        getDb().run(`
             UPDATE media SET alt_text = ?, title = ?, caption = ?, description = ?, modified = ?, modified_gmt = ?
             WHERE id = ?
-        `);
-        stmt.run(
+        `, [
             data.alt_text ?? existing.alt_text,
             data.title ?? existing.title,
             data.caption ?? existing.caption,
             data.description ?? existing.description,
-            now, now, id
-        );
+            now, now, parseInt(id)
+        ]);
+        saveDatabase();
         return this.getById(id);
     }
 
     delete(id) {
-        const result = db.prepare('DELETE FROM media WHERE id = ?').run(id);
-        return result.changes > 0;
+        getDb().run('DELETE FROM media WHERE id = ?', [parseInt(id)]);
+        saveDatabase();
+        return true;
     }
 }
 
 class CategoriesRepository {
     getAll() {
-        return db.prepare('SELECT * FROM categories ORDER BY name').all();
+        const stmt = getDb().prepare('SELECT * FROM categories ORDER BY name');
+        const rows = [];
+        while (stmt.step()) rows.push(stmt.getAsObject());
+        stmt.free();
+        return rows;
     }
 
     getById(id) {
-        return db.prepare('SELECT * FROM categories WHERE id = ?').get(id);
+        const stmt = getDb().prepare('SELECT * FROM categories WHERE id = ?');
+        stmt.bind([parseInt(id)]);
+        if (stmt.step()) {
+            const row = stmt.getAsObject();
+            stmt.free();
+            return row;
+        }
+        stmt.free();
+        return null;
     }
 
     create(data) {
-        const stmt = db.prepare('INSERT INTO categories (name, slug, description, parent, count) VALUES (?, ?, ?, ?, ?)');
-        const result = stmt.run(data.name, data.slug, data.description || '', data.parent || 0, 0);
-        return this.getById(result.lastInsertRowid);
+        getDb().run('INSERT INTO categories (name, slug, description, parent, count) VALUES (?, ?, ?, ?, ?)', [
+            data.name, data.slug, data.description || '', data.parent || 0, 0
+        ]);
+        saveDatabase();
+        const result = getDb().exec('SELECT last_insert_rowid() as id');
+        const id = result[0].values[0][0];
+        return this.getById(id);
     }
 }
 
 class TagsRepository {
     getAll() {
-        return db.prepare('SELECT * FROM tags ORDER BY name').all();
+        const stmt = getDb().prepare('SELECT * FROM tags ORDER BY name');
+        const rows = [];
+        while (stmt.step()) rows.push(stmt.getAsObject());
+        stmt.free();
+        return rows;
     }
 
     getById(id) {
-        return db.prepare('SELECT * FROM tags WHERE id = ?').get(id);
+        const stmt = getDb().prepare('SELECT * FROM tags WHERE id = ?');
+        stmt.bind([parseInt(id)]);
+        if (stmt.step()) {
+            const row = stmt.getAsObject();
+            stmt.free();
+            return row;
+        }
+        stmt.free();
+        return null;
     }
 
     create(data) {
-        const stmt = db.prepare('INSERT INTO tags (name, slug, description, count) VALUES (?, ?, ?, ?)');
-        const result = stmt.run(data.name, data.slug, data.description || '', 0);
-        return this.getById(result.lastInsertRowid);
+        getDb().run('INSERT INTO tags (name, slug, description, count) VALUES (?, ?, ?, ?)', [
+            data.name, data.slug, data.description || '', 0
+        ]);
+        saveDatabase();
+        const result = getDb().exec('SELECT last_insert_rowid() as id');
+        const id = result[0].values[0][0];
+        return this.getById(id);
     }
 }
 
-// Export singleton instances
+// Export
 module.exports = {
-    db,
+    initDatabase,
+    getDb,
+    saveDatabase,
     posts: new PostsRepository(),
     media: new MediaRepository(),
     categories: new CategoriesRepository(),

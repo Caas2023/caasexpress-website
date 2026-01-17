@@ -1,6 +1,6 @@
 /**
  * Caas Express - WordPress-Compatible REST API
- * Refactored with MVC architecture and SQLite database
+ * Refactored with MVC architecture and SQLite database (sql.js - serverless compatible)
  */
 
 require('dotenv').config();
@@ -139,37 +139,51 @@ app.get('/wp-json', (req, res) => {
 // ============================================
 
 app.get('/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        database: 'sqlite',
-        posts: db.posts.count(),
-        media: db.media.getAll().length,
-        categories: db.categories.getAll().length
-    });
+    try {
+        res.json({
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            database: 'sqlite (sql.js)',
+            posts: db.posts.count(),
+            media: db.media.getAll().length,
+            categories: db.categories.getAll().length
+        });
+    } catch (e) {
+        res.json({
+            status: 'initializing',
+            timestamp: new Date().toISOString()
+        });
+    }
 });
 
 // ============================================
 // START SERVER
 // ============================================
 
-app.listen(PORT, () => {
-    console.log('');
-    console.log('╔══════════════════════════════════════════════════════════════╗');
-    console.log('║     🏍️  CAAS EXPRESS - WordPress-Compatible REST API        ║');
-    console.log('║     📦 Phase 2: SQLite + MVC Architecture                   ║');
-    console.log('╠══════════════════════════════════════════════════════════════╣');
-    console.log(`║  🌐 API URL:     http://localhost:${PORT}                       ║`);
-    console.log(`║  📄 WP REST:     http://localhost:${PORT}/wp-json               ║`);
-    console.log('╠══════════════════════════════════════════════════════════════╣');
-    console.log('║  🔑 CREDENCIAIS: (configuradas no .env)                     ║');
-    console.log('╠══════════════════════════════════════════════════════════════╣');
-    console.log('║  📚 ENDPOINTS DISPONÍVEIS:                                   ║');
-    console.log('║  • POST /wp-json/wp/v2/posts     - Criar post               ║');
-    console.log('║  • POST /wp-json/wp/v2/media     - Upload imagem            ║');
-    console.log('║  • POST /wp-json/robo-seo-api-rest/v1/update-meta - SEO     ║');
-    console.log('╚══════════════════════════════════════════════════════════════╝');
-    console.log('');
-});
+async function startServer() {
+    // Initialize database first
+    await db.initDatabase();
+
+    app.listen(PORT, () => {
+        console.log('');
+        console.log('╔══════════════════════════════════════════════════════════════╗');
+        console.log('║     🏍️  CAAS EXPRESS - WordPress-Compatible REST API        ║');
+        console.log('║     📦 SQLite + MVC (Serverless Compatible)                 ║');
+        console.log('╠══════════════════════════════════════════════════════════════╣');
+        console.log(`║  🌐 API URL:     http://localhost:${PORT}                       ║`);
+        console.log(`║  📄 WP REST:     http://localhost:${PORT}/wp-json               ║`);
+        console.log('╠══════════════════════════════════════════════════════════════╣');
+        console.log('║  🔑 CREDENCIAIS: (configuradas no .env)                     ║');
+        console.log('╠══════════════════════════════════════════════════════════════╣');
+        console.log('║  📚 ENDPOINTS DISPONÍVEIS:                                   ║');
+        console.log('║  • POST /wp-json/wp/v2/posts     - Criar post               ║');
+        console.log('║  • POST /wp-json/wp/v2/media     - Upload imagem            ║');
+        console.log('║  • POST /wp-json/robo-seo-api-rest/v1/update-meta - SEO     ║');
+        console.log('╚══════════════════════════════════════════════════════════════╝');
+        console.log('');
+    });
+}
+
+startServer().catch(console.error);
 
 module.exports = app;
