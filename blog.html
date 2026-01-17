@@ -208,8 +208,8 @@
             const grid = document.getElementById('blog-grid');
 
             try {
-                if (!res.ok) throw new Error('Falha ao buscar posts');
-                const posts = await res.json();
+                if (!response.ok) throw new Error('Falha ao buscar posts');
+                const posts = await response.json();
 
                 if (!posts || posts.length === 0) {
                     grid.innerHTML = `
