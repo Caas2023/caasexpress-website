@@ -290,6 +290,18 @@
                     }
                 }).join('');
 
+                // Inicializar animações para os novos elementos
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('animated');
+                            observer.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.1 });
+
+                document.querySelectorAll('#blog-grid .animate-on-scroll').forEach(el => observer.observe(el));
+
             } catch (error) {
                 console.error('Erro ao carregar posts:', error);
                 grid.innerHTML = `
