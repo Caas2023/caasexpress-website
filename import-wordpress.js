@@ -20,7 +20,11 @@ async function fetchWordPressPosts() {
 
     while (hasMore) {
         try {
-            const response = await fetch(`${WP_URL}/wp-json/wp/v2/posts?per_page=100&page=${page}&_embed`);
+            const response = await fetch(`${WP_URL}/wp-json/wp/v2/posts?per_page=100&page=${page}&_embed`, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+            });
 
             if (!response.ok) {
                 if (response.status === 400) {
