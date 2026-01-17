@@ -208,9 +208,8 @@
             const grid = document.getElementById('blog-grid');
 
             try {
-                // Buscar posts da API real
-                const response = await fetch('/wp-json/wp/v2/posts?status=publish&per_page=12');
-                const posts = await response.json();
+                if (!res.ok) throw new Error('Falha ao buscar posts');
+                const posts = await res.json();
 
                 if (!posts || posts.length === 0) {
                     grid.innerHTML = `
@@ -225,52 +224,68 @@
 
                 // Renderizar posts
                 grid.innerHTML = posts.map((post, index) => {
-                    // Extract data from WP format
-                    const title = post.title?.rendered || post.title || 'Sem título';
-                    const content = post.content?.rendered || post.content || '';
-                    const excerpt = post.excerpt?.rendered || post.excerpt || content.substring(0, 150);
-                    const date = new Date(post.date || new Date()).toLocaleDateString('pt-BR', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                    });
-                    // Get featured image if available
-                    const image = post.featured_media_url || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop';
+                    try {
+                        // Extract data from WP format safely
+                        const title = post.title?.rendered || post.title || 'Sem título';
+                        const content = post.content?.rendered || post.content || '';
+                        // Remove tags HTML do excerpt e limita tamanho
+                        let cleanExcerpt = (post.excerpt?.rendered || post.excerpt || content).replace(/<[^>]*>?/gm, '');
+                        if (cleanExcerpt.length > 120) cleanExcerpt = cleanExcerpt.substring(0, 120) + '...';
 
-                    return `
-                        <article class="blog-card animate-on-scroll" style="animation-delay: ${index * 100}ms">
-                            <a href="post.html?id=${post.id}" class="blog-card-image-link">
-                                <div class="blog-card-image">
-                                    <img src="${image}" alt="${title}" loading="lazy">
-                                    <span class="blog-category">Dicas</span>
-                                </div>
-                            </a>
-                            <div class="blog-card-content">
-                                <div class="blog-meta">
-                                    <span class="blog-date">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z" />
-                                        </svg>
-                                        ${date}
-                                    </span>
-                                    <span class="blog-read-time">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
-                                        </svg>
-                                        5 min de leitura
-                                    </span>
-                                </div>
-                                <h2><a href="post.html?id=${post.id}">${title}</a></h2>
-                                <p>${excerpt.replace(/<[^>]*>/g, '').substring(0, 120)}...</p>
-                                <a href="post.html?id=${post.id}" class="blog-read-more">
-                                    Ler mais
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
-                                    </svg>
+                        const date = new Date(post.date || new Date()).toLocaleDateString('pt-BR', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                        });
+
+                        // Fallback seguro para imagem
+                        let image = 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop';
+                        // Tenta pegar imagem destacada se vier populada (necessita de _embed na query)
+                        if (post._embedded && post._embedded['wp:featuredmedia'] && post._embedded['wp:featuredmedia'][0]) {
+                            image = post._embedded['wp:featuredmedia'][0].source_url || image;
+                        } else if (post.featured_image) {
+                            // Caso venha do campo customizado que salvamos no banco
+                            image = post.featured_image;
+                        }
+
+                        return `
+                            <article class="blog-card animate-on-scroll" style="animation-delay: ${index * 100}ms">
+                                <a href="post.html?id=${post.slug || post.id}" class="blog-card-image-link">
+                                    <div class="blog-card-image">
+                                        <img src="${image}" alt="${title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop'">
+                                        <span class="blog-category">Dicas</span>
+                                    </div>
                                 </a>
-                            </div>
-                        </article>
-                    `;
+                                <div class="blog-card-content">
+                                    <div class="blog-meta">
+                                        <span class="blog-date">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z" />
+                                            </svg>
+                                            ${date}
+                                        </span>
+                                        <span class="blog-read-time">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                                            </svg>
+                                            5 min de leitura
+                                        </span>
+                                    </div>
+                                    <h2><a href="post.html?id=${post.slug || post.id}">${title}</a></h2>
+                                    <p>${cleanExcerpt}</p>
+                                    <a href="post.html?id=${post.slug || post.id}" class="blog-read-more">
+                                        Ler mais
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                                        </svg>
+                                    </a>
+                                </div>
+                            </article>
+                        `;
+                    } catch (err) {
+                        console.warn('Erro ao renderizar um post:', err, post);
+                        return ''; // Pula post com erro
+                    }
                 }).join('');
 
             } catch (error) {
@@ -279,6 +294,7 @@
                     <div class="blog-empty-state" style="grid-column: 1/-1; text-align: center; padding: 4rem 2rem;">
                         <h2 style="color: #666; margin-bottom: 1rem;">⚠️ Erro ao carregar artigos</h2>
                         <p style="color: #999;">Tente novamente mais tarde.</p>
+                        <small style="color: #ccc">${error.message}</small>
                     </div>
                 `;
             }
