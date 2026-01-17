@@ -42,7 +42,8 @@ const LocalDB = {
 };
 
 const RemoteDB = {
-    BASE_URL: 'http://localhost:3001/wp-json/wp/v2',
+    // Use relative URL so it works on any domain (localhost, vercel, etc)
+    BASE_URL: '/wp-json/wp/v2',
 
     headers() {
         const token = localStorage.getItem('caas_api_token');

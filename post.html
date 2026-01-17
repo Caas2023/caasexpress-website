@@ -102,8 +102,6 @@
     </footer>
 
     <!-- Scripts -->
-    <script src="api.js"></script>
-    <script src="main.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const container = document.getElementById('post-container');
@@ -115,49 +113,46 @@
                 return;
             }
 
-            // Tentar buscar da API no localStorage
-            let post = null;
-
             try {
-                // Tenta buscar no mock/local primeiro
-                post = CaasAPI.posts.get(postId);
+                // Fetch post from real API
+                const response = await fetch(`/wp-json/wp/v2/posts/${postId}`);
 
-                // Se não achar, e tivermos lógica para buscar online (future enhancement), faríamos aqui.
-                // Por enquanto confiamos no api.js mockado.
-
-                if (!post) {
-                    container.innerHTML = `<div class="container" style="text-align:center; padding: 100px 0;"><h1>Artigo não encontrado</h1><a href="blog.html" class="btn btn-primary">Voltar para o Blog</a></div>`;
-                    document.title = "Artigo não encontrado | Caas Express";
-                    return;
+                if (!response.ok) {
+                    throw new Error('Post not found');
                 }
 
-                // Atualizar título da página
-                document.title = `${post.title} | Blog Caas Express`;
+                const post = await response.json();
 
-                // Renderizar
-                // Formatar data
-                const date = new Date(post.created_at || new Date()).toLocaleDateString('pt-BR', {
+                // Extract data from WP format
+                const title = post.title?.rendered || post.title || 'Sem título';
+                const content = post.content?.rendered || post.content || '<p>Conteúdo não disponível.</p>';
+                const date = new Date(post.date || new Date()).toLocaleDateString('pt-BR', {
                     day: 'numeric', month: 'long', year: 'numeric'
                 });
+                const image = post.featured_media_url || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&h=600&fit=crop';
 
+                // Update page title
+                document.title = `${title} | Blog Caas Express`;
+
+                // Render post
                 container.innerHTML = `
-                    <div class="post-header-image" style="background-image: url('${post.image || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&h=600&fit=crop'}')">
+                    <div class="post-header-image" style="background-image: url('${image}')">
                         <div class="post-header-overlay"></div>
                         <div class="container">
                             <div class="post-meta-badges">
-                                <span class="post-category-badge">${post.category || 'Geral'}</span>
+                                <span class="post-category-badge">Dicas</span>
                             </div>
-                            <h1 class="post-title">${post.title}</h1>
+                            <h1 class="post-title">${title}</h1>
                             <div class="post-info">
                                 <span>📅 ${date}</span>
-                                <span>⏱️ ${post.read_time || '5 min'} de leitura</span>
+                                <span>⏱️ 5 min de leitura</span>
                             </div>
                         </div>
                     </div>
                     
                     <div class="container post-body-container">
                         <div class="post-content">
-                            ${post.content || `<p>${post.excerpt}</p><p>Conteúdo completo em breve...</p>`}
+                            ${content}
                         </div>
                         
                         <div class="post-sidebar">
@@ -169,13 +164,23 @@
                                     <button class="btn btn-primary" style="width: 100%;">Inscrever-se</button>
                                 </form>
                             </div>
+                            <div class="sidebar-widget" style="margin-top: 2rem;">
+                                <a href="blog.html" class="btn btn-outline" style="width: 100%;">← Voltar para o Blog</a>
+                            </div>
                         </div>
                     </div>
                 `;
 
             } catch (error) {
-                console.error(error);
-                container.innerHTML = `<div class="container"><h1>Erro ao carregar artigo</h1></div>`;
+                console.error('Erro ao carregar post:', error);
+                container.innerHTML = `
+                    <div class="container" style="text-align:center; padding: 100px 0;">
+                        <h1>Artigo não encontrado</h1>
+                        <p style="color: #666; margin: 1rem 0;">O artigo que você procura não existe ou foi removido.</p>
+                        <a href="blog.html" class="btn btn-primary">Voltar para o Blog</a>
+                    </div>
+                `;
+                document.title = "Artigo não encontrado | Caas Express";
             }
         });
     </script>
