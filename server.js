@@ -89,6 +89,9 @@ app.get('/blog', (req, res) => {
 app.get('/post', (req, res) => {
     res.sendFile(path.join(__dirname, 'post.html'));
 });
+app.get('/webstories', (req, res) => {
+    res.sendFile(path.join(__dirname, 'webstories.html'));
+});
 
 // Fallback static middleware
 app.use(express.static(__dirname));
@@ -106,6 +109,9 @@ const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
 // Auth middleware instance
 const auth = authenticate(CONFIG);
 
+// Web Stories Controller
+const webStoriesController = require('./src/controllers/webstories.controller');
+
 // ============================================
 // ROUTES (MVC)
 // ============================================
@@ -114,6 +120,16 @@ app.use('/wp-json/wp/v2/posts', require('./src/routes/posts.routes')(auth));
 app.use('/wp-json/wp/v2/media', require('./src/routes/media.routes')(auth, upload, CONFIG.UPLOADS_DIR));
 app.use('/wp-json/wp/v2/categories', require('./src/routes/categories.routes')(auth));
 app.use('/wp-json/wp/v2/tags', require('./src/routes/tags.routes')(auth));
+
+// Web Stories API
+app.get('/wp-json/wp/v2/web-story', webStoriesController.list);
+app.get('/wp-json/wp/v2/web-story/:id', webStoriesController.get);
+app.post('/wp-json/wp/v2/web-story', auth, webStoriesController.create);
+app.delete('/wp-json/wp/v2/web-story/:id', auth, webStoriesController.remove);
+
+// Web Stories AMP Render (public)
+app.get('/web-stories/:slug/', webStoriesController.render);
+app.get('/web-stories/:slug', (req, res) => res.redirect(`/web-stories/${req.params.slug}/`));
 
 // SEO Plugin Endpoint
 app.post('/wp-json/robo-seo-api-rest/v1/update-meta', auth, seoController.updateMeta);

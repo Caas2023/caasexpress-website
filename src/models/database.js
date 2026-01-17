@@ -97,6 +97,27 @@ async function initDatabase() {
         )
     `);
 
+    // Web Stories table
+    await db.execute(`
+        CREATE TABLE IF NOT EXISTS web_stories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL DEFAULT '',
+            content TEXT DEFAULT '',
+            slug TEXT UNIQUE,
+            status TEXT DEFAULT 'publish',
+            author INTEGER DEFAULT 1,
+            poster_portrait TEXT DEFAULT '',
+            poster_square TEXT DEFAULT '',
+            poster_landscape TEXT DEFAULT '',
+            publisher_logo TEXT DEFAULT '',
+            story_data TEXT DEFAULT '{}',
+            date TEXT DEFAULT CURRENT_TIMESTAMP,
+            date_gmt TEXT DEFAULT CURRENT_TIMESTAMP,
+            modified TEXT DEFAULT CURRENT_TIMESTAMP,
+            modified_gmt TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
     // Seed default categories if empty
     const catResult = await db.execute('SELECT COUNT(*) as count FROM categories');
     if (catResult.rows[0].count === 0) {
@@ -364,6 +385,58 @@ class TagsRepository {
     }
 }
 
+class WebStoriesRepository {
+    async getAll() {
+        const result = await getDb().execute('SELECT * FROM web_stories ORDER BY date DESC');
+        return result.rows.map(this._parseRow);
+    }
+
+    async getById(id) {
+        const result = await getDb().execute({
+            sql: 'SELECT * FROM web_stories WHERE id = ?',
+            args: [parseInt(id)]
+        });
+        return result.rows.length > 0 ? this._parseRow(result.rows[0]) : null;
+    }
+
+    async create(data) {
+        const now = new Date().toISOString();
+        const result = await getDb().execute({
+            sql: `INSERT INTO web_stories (title, content, slug, status, author, poster_portrait, poster_square, poster_landscape, publisher_logo, story_data, date, date_gmt, modified, modified_gmt)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            args: [
+                data.title || '',
+                data.content || '',
+                data.slug || '',
+                data.status || 'publish',
+                data.author || 1,
+                data.poster_portrait || '',
+                data.poster_square || '',
+                data.poster_landscape || '',
+                data.publisher_logo || '',
+                JSON.stringify(data.story_data || {}),
+                data.date || now,
+                data.date_gmt || now,
+                now,
+                now
+            ]
+        });
+        return this.getById(result.lastInsertRowid);
+    }
+
+    async delete(id) {
+        await getDb().execute({ sql: 'DELETE FROM web_stories WHERE id = ?', args: [parseInt(id)] });
+        return true;
+    }
+
+    _parseRow(row) {
+        return {
+            ...row,
+            story_data: JSON.parse(row.story_data || '{}')
+        };
+    }
+}
+
 // Export
 module.exports = {
     initDatabase,
@@ -371,5 +444,6 @@ module.exports = {
     posts: new PostsRepository(),
     media: new MediaRepository(),
     categories: new CategoriesRepository(),
-    tags: new TagsRepository()
+    tags: new TagsRepository(),
+    webStories: new WebStoriesRepository()
 };

@@ -1,0 +1,334 @@
+{
+    "name": "WordPress Import - Posts + Web Stories → Caas Express",
+    "nodes": [
+        {
+            "parameters": {},
+            "id": "trigger",
+            "name": "Start Import",
+            "type": "n8n-nodes-base.manualTrigger",
+            "typeVersion": 1,
+            "position": [
+                200,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://caasexpress.com/wp-json/wp/v2/posts",
+                "options": {},
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "per_page",
+                            "value": "100"
+                        },
+                        {
+                            "name": "status",
+                            "value": "publish"
+                        },
+                        {
+                            "name": "_embed",
+                            "value": "true"
+                        }
+                    ]
+                }
+            },
+            "id": "fetch-posts",
+            "name": "Fetch WordPress Posts",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                450,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://caasexpress.com/wp-json/wp/v2/web-story",
+                "options": {},
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "per_page",
+                            "value": "100"
+                        },
+                        {
+                            "name": "status",
+                            "value": "publish"
+                        },
+                        {
+                            "name": "_embed",
+                            "value": "true"
+                        }
+                    ]
+                }
+            },
+            "id": "fetch-stories",
+            "name": "Fetch WordPress Web Stories",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                450,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "// Transform WordPress Post\nconst post = $json;\n\nconst title = post.title?.rendered || post.title || 'Sem título';\nconst content = post.content?.rendered || post.content || '';\nconst excerpt = post.excerpt?.rendered || post.excerpt || content.substring(0, 200);\n\nlet featured_image = '';\nif (post._embedded && post._embedded['wp:featuredmedia']) {\n  const media = post._embedded['wp:featuredmedia'][0];\n  if (media && media.source_url) {\n    featured_image = media.source_url;\n  }\n}\n\nreturn {\n  type: 'post',\n  title,\n  content,\n  excerpt,\n  slug: post.slug || '',\n  status: post.status || 'publish',\n  date: post.date || new Date().toISOString(),\n  featured_image,\n  original_id: post.id\n};"
+            },
+            "id": "transform-posts",
+            "name": "Transform Posts",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                700,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "// Transform WordPress Web Story\nconst story = $json;\n\nconst title = story.title?.rendered || story.title || 'Web Story';\nconst content = story.content?.rendered || story.content || '';\n\n// Get poster images\nlet poster_portrait = '';\nlet poster_square = '';\nlet poster_landscape = '';\n\nif (story.story_poster) {\n  poster_portrait = story.story_poster.portrait || '';\n  poster_square = story.story_poster.square || '';\n  poster_landscape = story.story_poster.landscape || '';\n}\n\nreturn {\n  type: 'web-story',\n  title,\n  content,\n  slug: story.slug || '',\n  status: story.status || 'publish',\n  date: story.date || new Date().toISOString(),\n  poster_portrait,\n  poster_square,\n  poster_landscape,\n  publisher_logo: story.publisher_logo_url || '',\n  story_data: story.story_data || {},\n  original_id: story.id\n};"
+            },
+            "id": "transform-stories",
+            "name": "Transform Stories",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                700,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "is-post",
+                            "leftValue": "={{ $json.type }}",
+                            "rightValue": "post",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ]
+                }
+            },
+            "id": "route-type",
+            "name": "Route by Type",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                1000,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://caasexpress-website.vercel.app/wp-json/wp/v2/posts",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({\n  title: $json.title,\n  content: $json.content,\n  excerpt: $json.excerpt,\n  slug: $json.slug,\n  status: $json.status,\n  date: $json.date\n}) }}",
+                "options": {}
+            },
+            "id": "create-post",
+            "name": "Create Post",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1250,
+                300
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "CONFIGURE_BEARER_TOKEN",
+                    "name": "Caas Express Bearer"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://caasexpress-website.vercel.app/wp-json/wp/v2/web-story",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({\n  title: $json.title,\n  content: $json.content,\n  slug: $json.slug,\n  status: $json.status,\n  date: $json.date,\n  poster_portrait: $json.poster_portrait,\n  poster_square: $json.poster_square,\n  poster_landscape: $json.poster_landscape,\n  publisher_logo: $json.publisher_logo,\n  story_data: $json.story_data\n}) }}",
+                "options": {}
+            },
+            "id": "create-story",
+            "name": "Create Web Story",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1250,
+                500
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "CONFIGURE_BEARER_TOKEN",
+                    "name": "Caas Express Bearer"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "aggregate": "aggregateAllItemData"
+            },
+            "id": "merge-results",
+            "name": "Merge Results",
+            "type": "n8n-nodes-base.aggregate",
+            "typeVersion": 1,
+            "position": [
+                1500,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "// Count results\nconst items = $input.all();\nconst posts = items.filter(i => i.json.type === 'post').length;\nconst stories = items.filter(i => i.json.type === 'web-story').length;\n\nreturn [{\n  json: {\n    message: `Import complete!`,\n    posts_imported: posts,\n    web_stories_imported: stories,\n    total: items.length\n  }\n}];"
+            },
+            "id": "summary",
+            "name": "Summary",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1700,
+                400
+            ]
+        }
+    ],
+    "connections": {
+        "Start Import": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch WordPress Posts",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Fetch WordPress Web Stories",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch WordPress Posts": {
+            "main": [
+                [
+                    {
+                        "node": "Transform Posts",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch WordPress Web Stories": {
+            "main": [
+                [
+                    {
+                        "node": "Transform Stories",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Transform Posts": {
+            "main": [
+                [
+                    {
+                        "node": "Route by Type",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Transform Stories": {
+            "main": [
+                [
+                    {
+                        "node": "Route by Type",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Route by Type": {
+            "main": [
+                [
+                    {
+                        "node": "Create Post",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Create Web Story",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Create Post": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Create Web Story": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Merge Results": {
+            "main": [
+                [
+                    {
+                        "node": "Summary",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [],
+    "triggerCount": 0
+}
