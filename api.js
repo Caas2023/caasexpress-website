@@ -1,77 +1,56 @@
 /**
- * Caas Express Blog API V3
- * Suporte Completo: Posts, Pages, Media, Categories, Settings
+ * Caas Express Blog API V3 (Unified Architecture)
+ * Single Source of Truth: Uses AppConfig to talk to Real Backend (Remote or Local 3001)
+ * Eliminates "Split Brain" problem by removing LocalStorage data fallback.
  */
 
 const API_CONFIG = {
+    // API_KEY is kept for future use if needed, but currently using Basic Auth or Token
     API_KEY: 'caas_api_2024_secret_key_change_me',
     API_USER: 'admin',
     POSTS_PER_PAGE: 10
 };
 
-// ============================================
-// DATABASE ADAPTERS
-// ============================================
-
-const LocalDB = {
-    init() {
-        if (!localStorage.getItem('blog_posts')) localStorage.setItem('blog_posts', JSON.stringify([]));
-        if (!localStorage.getItem('blog_pages')) localStorage.setItem('blog_pages', JSON.stringify([]));
-        if (!localStorage.getItem('blog_cats')) localStorage.setItem('blog_cats', JSON.stringify([{ id: 1, name: 'Geral', slug: 'geral' }]));
-        if (!localStorage.getItem('blog_settings')) localStorage.setItem('blog_settings', JSON.stringify({ title: 'Caas Express', tagline: 'Serviços de Motoboy' }));
-    },
-
-    // Posts & Pages shared logic usually, but here separate for simplicity
-    getPosts() { return JSON.parse(localStorage.getItem('blog_posts') || '[]'); },
-    getPages() { return JSON.parse(localStorage.getItem('blog_pages') || '[]'); },
-
-    // Generic Save
-    save(key, data) { localStorage.setItem(key, JSON.stringify(data)); },
-
-    createPost(data) {
-        const posts = this.getPosts();
-        const newPost = { ...data, id: Date.now(), created_at: new Date().toISOString() };
-        posts.unshift(newPost);
-        this.save('blog_posts', posts);
-        return newPost;
-    },
-
-    // Mock Media
-    getMedia() { return Promise.resolve([]); },
-    uploadMedia() { return Promise.resolve({ source_url: 'https://via.placeholder.com/150' }); }
-};
-
 const RemoteDB = {
-    // Use relative URL so it works on any domain (localhost, vercel, etc)
-    BASE_URL: '/wp-json/wp/v2',
+    // Dynamically retrieve Base URL from global config
+    get BASE_URL() {
+        // AppConfig must be loaded before this file
+        const base = (typeof AppConfig !== 'undefined') ? AppConfig.getApiBaseUrl() : '';
+        return `${base}/wp-json/wp/v2`;
+    },
 
     headers() {
         const token = localStorage.getItem('caas_api_token');
-        return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Basic ${token}` : ''
+        };
     },
 
     async isAvailable() {
-        try { const r = await fetch(`${this.BASE_URL}/posts?per_page=1`, { method: 'HEAD' }); return r.ok; } catch { return false; }
+        try {
+            const r = await fetch(`${this.BASE_URL}/posts?per_page=1`, { method: 'HEAD' });
+            return r.ok;
+        } catch {
+            return false;
+        }
     },
 
     // Posts & Pages
     async getPosts(params = {}) {
         const q = new URLSearchParams(params).toString();
         const res = await fetch(`${this.BASE_URL}/posts?${q}`, { headers: this.headers() });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
     },
 
-    // NOTE: Our server might treat Pages as Posts with type='page'.
-    // Standard WP has /pages endpoint. Let's try /pages, if fail fall back to posts?
-    // We will assume server supports /pages or filter posts.
     async getPages() {
-        // Try dedicated endpoint first
         try {
             const res = await fetch(`${this.BASE_URL}/pages`, { headers: this.headers() });
             if (res.ok) return res.json();
             throw new Error('No pages endpoint');
         } catch {
-            return []; // Fallback empty
+            return [];
         }
     },
 
@@ -86,6 +65,7 @@ const RemoteDB = {
         const res = await fetch(`${this.BASE_URL}/${endpoint}`, {
             method: 'POST', headers: this.headers(), body: JSON.stringify(data)
         });
+        if (!res.ok) throw new Error(`Erro ao criar post: ${res.statusText}`);
         return res.json();
     },
 
@@ -94,23 +74,31 @@ const RemoteDB = {
         const res = await fetch(`${this.BASE_URL}/${endpoint}/${id}`, {
             method: 'POST', headers: this.headers(), body: JSON.stringify(data)
         });
+        if (!res.ok) throw new Error(`Erro ao atualizar: ${res.statusText}`);
         return res.json();
     },
 
     async deletePost(id) {
-        await fetch(`${this.BASE_URL}/posts/${id}`, { method: 'DELETE', headers: this.headers() });
+        // Warning: This is a real delete
+        const res = await fetch(`${this.BASE_URL}/posts/${id}`, { method: 'DELETE', headers: this.headers() });
+        if (!res.ok) throw new Error(`Erro ao deletar: ${res.statusText}`);
     },
 
     // Media
     async getMedia() {
         const res = await fetch(`${this.BASE_URL}/media`, { headers: this.headers() });
+        if (!res.ok) return [];
         return res.json();
     },
+
     async uploadMedia(file) {
         const fd = new FormData();
         fd.append('file', file);
+        // Do not set Content-Type header manually for FormData, browser does it
+        const headers = { 'Authorization': this.headers().Authorization };
+
         const res = await fetch(`${this.BASE_URL}/media`, {
-            method: 'POST', headers: { 'Authorization': this.headers().Authorization }, body: fd
+            method: 'POST', headers: headers, body: fd
         });
         return res.json();
     },
@@ -118,7 +106,7 @@ const RemoteDB = {
     // Categories
     async getCategories() {
         const res = await fetch(`${this.BASE_URL}/categories`, { headers: this.headers() });
-        return res.json();
+        return res.ok ? res.json() : [];
     },
     async createCategory(data) {
         const res = await fetch(`${this.BASE_URL}/categories`, { method: 'POST', headers: this.headers(), body: JSON.stringify(data) });
@@ -127,11 +115,8 @@ const RemoteDB = {
 };
 
 const Repository = {
-    useRemote: false,
     async init() {
-        LocalDB.init();
-        this.useRemote = await RemoteDB.isAvailable();
-        console.log(`API Mode: ${this.useRemote ? 'Remote' : 'Local'}`);
+        console.log('Using Unified API Config. Base URL:', RemoteDB.BASE_URL);
     },
 
     async getStats() {
@@ -142,55 +127,55 @@ const Repository = {
     },
 
     async getPosts() {
-        if (this.useRemote) { try { return (await RemoteDB.getPosts()).map(this.norm); } catch (e) { return LocalDB.getPosts(); } }
-        return LocalDB.getPosts();
+        try {
+            return (await RemoteDB.getPosts()).map(this.norm);
+        } catch (e) {
+            console.error('API Error:', e);
+            // Return empty array to signal "No Data" instead of fake data
+            return [];
+        }
     },
 
     async getPages() {
-        if (this.useRemote) { try { return (await RemoteDB.getPages()).map(this.norm); } catch (e) { return LocalDB.getPages(); } }
-        return LocalDB.getPages();
+        try {
+            return (await RemoteDB.getPages()).map(this.norm);
+        } catch (e) {
+            return [];
+        }
     },
 
     async getPost(id) {
-        if (this.useRemote) { const p = await RemoteDB.getPost(id); return p ? this.norm(p) : null; }
-        return LocalDB.getPosts().find(p => p.id == id);
+        const p = await RemoteDB.getPost(id);
+        return p ? this.norm(p) : null;
     },
 
     async createPost(data) {
-        if (this.useRemote) return this.norm(await RemoteDB.createPost(data));
-        return LocalDB.createPost(data);
+        return this.norm(await RemoteDB.createPost(data));
     },
 
     async updatePost(id, data) {
-        if (this.useRemote) return this.norm(await RemoteDB.updatePost(id, data));
-        // Local update simplified...
-        return data;
+        return this.norm(await RemoteDB.updatePost(id, data));
     },
 
     async deletePost(id) {
-        if (this.useRemote) return await RemoteDB.deletePost(id);
-        return true;
+        return await RemoteDB.deletePost(id);
     },
 
     // Media
     async uploadMedia(file) {
-        if (this.useRemote) return await RemoteDB.uploadMedia(file);
-        return LocalDB.uploadMedia(file);
+        return await RemoteDB.uploadMedia(file);
     },
     async getMedia() {
-        if (this.useRemote) try { return await RemoteDB.getMedia(); } catch { }
-        return LocalDB.getMedia();
+        try { return await RemoteDB.getMedia(); } catch { return []; }
     },
 
     // Categories
     async getCategories() {
-        if (this.useRemote) try { return await RemoteDB.getCategories(); } catch { }
-        return JSON.parse(localStorage.getItem('blog_cats') || '[]');
+        try { return await RemoteDB.getCategories(); } catch { return []; }
     },
     async createCategory(name) {
         const slug = name.toLowerCase().replace(/ /g, '-');
-        if (this.useRemote) return await RemoteDB.createCategory({ name, slug });
-        return { id: Date.now(), name, slug };
+        return await RemoteDB.createCategory({ name, slug });
     },
 
     norm(p) {
@@ -204,15 +189,15 @@ const Repository = {
             date: p.date,
             type: p.type || 'post',
             meta: p.meta || {},
-            image: p.featured_media_url || p.image, // Custom field from server or local
-            category: 'Geral' // Simplified
+            image: p.featured_media_url || p.image,
+            category: 'Geral'
         };
     }
 };
 
 window.CaasAPI = {
     init: () => Repository.init(),
-    auth: { verifyBasicAuth: () => true }, // Simplified
+    auth: { verifyBasicAuth: () => true },
     dashboard: { stats: () => Repository.getStats() },
     posts: {
         list: () => Repository.getPosts(),
@@ -224,7 +209,6 @@ window.CaasAPI = {
     pages: {
         list: () => Repository.getPages(),
         create: (d) => Repository.createPost({ ...d, type: 'page' }),
-        // update/delete reuse post logic internally usually
     },
     media: { upload: (f) => Repository.uploadMedia(f), list: () => Repository.getMedia() },
     categories: { list: () => Repository.getCategories(), create: (n) => Repository.createCategory(n) }

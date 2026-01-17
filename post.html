@@ -102,6 +102,7 @@
     </footer>
 
     <!-- Scripts -->
+    <script src="config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const container = document.getElementById('post-container');
@@ -114,8 +115,11 @@
             }
 
             try {
+                // Unified Config - Single Source of Truth
+                const apiBase = AppConfig.getApiBaseUrl();
+
                 // Fetch post from real API
-                const response = await fetch(`/wp-json/wp/v2/posts/${postId}`);
+                const response = await fetch(`${apiBase}/wp-json/wp/v2/posts/${postId}`);
 
                 if (!response.ok) {
                     throw new Error('Post not found');

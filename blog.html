@@ -202,15 +202,16 @@
         </a>
     </div>
 
+    <!-- Global Config -->
+    <script src="config.js"></script>
     <script>
         // Carregar posts dinamicamente da API do servidor
         document.addEventListener('DOMContentLoaded', async () => {
             const grid = document.getElementById('blog-grid');
 
             try {
-                // Detectar ambiente local (Live Server usa porta 5500 geralmente)
-                const isLocalDev = window.location.port === '5500' || window.location.port === '5000';
-                const apiBase = isLocalDev ? 'http://localhost:3001' : '';
+                // Unified Config - Single Source of Truth
+                const apiBase = AppConfig.getApiBaseUrl();
 
                 // Buscar posts da API real
                 const response = await fetch(`${apiBase}/wp-json/wp/v2/posts?status=publish&per_page=12`);
