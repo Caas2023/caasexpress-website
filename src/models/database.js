@@ -1,44 +1,31 @@
 /**
- * SQLite Database Module (sql.js - Serverless Compatible)
- * Works on Vercel, Netlify, and other serverless platforms
+ * Turso Database Module (Persistent SQLite in the Cloud)
+ * Works on Vercel with persistent storage via Turso
  */
 
-const initSqlJs = require('sql.js');
-const path = require('path');
-const fs = require('fs');
-
-const DATA_DIR = path.join(__dirname, '..', '..', 'data');
-const DB_PATH = path.join(DATA_DIR, 'database.sqlite');
+const { createClient } = require('@libsql/client');
 
 let db = null;
-let SQL = null;
 
-// Initialize database
+// Initialize database connection
 async function initDatabase() {
     if (db) return db;
 
-    SQL = await initSqlJs();
+    // Check for Turso credentials
+    const url = process.env.TURSO_DATABASE_URL;
+    const authToken = process.env.TURSO_AUTH_TOKEN;
 
-    // Create data directory if needed
-    if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-
-    // Load existing database or create new
-    try {
-        if (fs.existsSync(DB_PATH)) {
-            const buffer = fs.readFileSync(DB_PATH);
-            db = new SQL.Database(buffer);
-        } else {
-            db = new SQL.Database();
-        }
-    } catch (e) {
-        console.log('Creating new database');
-        db = new SQL.Database();
+    if (!url || !authToken) {
+        console.warn('⚠️ Turso credentials not configured. Using in-memory database (data will not persist).');
+        // Fallback to in-memory for local development
+        db = createClient({ url: ':memory:' });
+    } else {
+        db = createClient({ url, authToken });
+        console.log('✅ Connected to Turso database');
     }
 
     // Create tables
-    db.run(`
+    await db.execute(`
         CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL DEFAULT '',
@@ -59,7 +46,7 @@ async function initDatabase() {
         )
     `);
 
-    db.run(`
+    await db.execute(`
         CREATE TABLE IF NOT EXISTS media (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT DEFAULT '',
@@ -80,7 +67,7 @@ async function initDatabase() {
         )
     `);
 
-    db.run(`
+    await db.execute(`
         CREATE TABLE IF NOT EXISTS categories (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -92,7 +79,7 @@ async function initDatabase() {
         )
     `);
 
-    db.run(`
+    await db.execute(`
         CREATE TABLE IF NOT EXISTS tags (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -103,9 +90,9 @@ async function initDatabase() {
         )
     `);
 
-    // Seed default categories
-    const catCount = db.exec('SELECT COUNT(*) as count FROM categories')[0];
-    if (!catCount || catCount.values[0][0] === 0) {
+    // Seed default categories if empty
+    const catResult = await db.execute('SELECT COUNT(*) as count FROM categories');
+    if (catResult.rows[0].count === 0) {
         const defaultCategories = [
             ['Sem categoria', 'sem-categoria', '', 0, 0],
             ['Dicas', 'dicas', 'Dicas de entregas', 0, 0],
@@ -114,20 +101,14 @@ async function initDatabase() {
             ['Negócios', 'negocios', 'Dicas para negócios', 0, 0]
         ];
         for (const cat of defaultCategories) {
-            db.run('INSERT INTO categories (name, slug, description, parent, count) VALUES (?, ?, ?, ?, ?)', cat);
+            await db.execute({
+                sql: 'INSERT INTO categories (name, slug, description, parent, count) VALUES (?, ?, ?, ?, ?)',
+                args: cat
+            });
         }
     }
 
-    saveDatabase();
     return db;
-}
-
-function saveDatabase() {
-    if (db) {
-        const data = db.export();
-        const buffer = Buffer.from(data);
-        fs.writeFileSync(DB_PATH, buffer);
-    }
 }
 
 function getDb() {
@@ -135,149 +116,127 @@ function getDb() {
     return db;
 }
 
-// Helper to convert sql.js result to array of objects
-function toObjects(result) {
-    if (!result || result.length === 0) return [];
-    const [{ columns, values }] = result;
-    return values.map(row => {
-        const obj = {};
-        columns.forEach((col, i) => obj[col] = row[i]);
-        return obj;
-    });
-}
-
 // ============================================
 // REPOSITORY CLASSES
 // ============================================
 
 class PostsRepository {
-    getAll(filters = {}) {
+    async getAll(filters = {}) {
         let query = 'SELECT * FROM posts WHERE 1=1';
-        const params = [];
+        const args = [];
 
         if (filters.status) {
             query += ' AND status = ?';
-            params.push(filters.status);
+            args.push(filters.status);
         }
         if (filters.type) {
             query += ' AND type = ?';
-            params.push(filters.type);
+            args.push(filters.type);
         }
         if (filters.search) {
             query += ' AND (title LIKE ? OR content LIKE ?)';
-            params.push(`%${filters.search}%`, `%${filters.search}%`);
+            args.push(`%${filters.search}%`, `%${filters.search}%`);
         }
 
         query += ' ORDER BY date DESC';
 
         if (filters.per_page) {
             query += ' LIMIT ?';
-            params.push(parseInt(filters.per_page));
+            args.push(parseInt(filters.per_page));
             if (filters.page) {
                 query += ' OFFSET ?';
-                params.push((parseInt(filters.page) - 1) * parseInt(filters.per_page));
+                args.push((parseInt(filters.page) - 1) * parseInt(filters.per_page));
             }
         }
 
-        const stmt = getDb().prepare(query);
-        if (params.length) stmt.bind(params);
-        const rows = [];
-        while (stmt.step()) rows.push(stmt.getAsObject());
-        stmt.free();
-        return rows.map(this._parseRow);
+        const result = await getDb().execute({ sql: query, args });
+        return result.rows.map(this._parseRow);
     }
 
-    getById(id) {
-        const stmt = getDb().prepare('SELECT * FROM posts WHERE id = ?');
-        stmt.bind([parseInt(id)]);
-        if (stmt.step()) {
-            const row = stmt.getAsObject();
-            stmt.free();
-            return this._parseRow(row);
-        }
-        stmt.free();
-        return null;
+    async getById(id) {
+        const result = await getDb().execute({
+            sql: 'SELECT * FROM posts WHERE id = ?',
+            args: [parseInt(id)]
+        });
+        return result.rows.length > 0 ? this._parseRow(result.rows[0]) : null;
     }
 
-    count(filters = {}) {
+    async count(filters = {}) {
         let query = 'SELECT COUNT(*) as count FROM posts WHERE 1=1';
-        const params = [];
+        const args = [];
         if (filters.status) {
             query += ' AND status = ?';
-            params.push(filters.status);
+            args.push(filters.status);
         }
         if (filters.type) {
             query += ' AND type = ?';
-            params.push(filters.type);
+            args.push(filters.type);
         }
-        const result = getDb().exec(query, params);
-        return result.length ? result[0].values[0][0] : 0;
+        const result = await getDb().execute({ sql: query, args });
+        return result.rows[0].count;
     }
 
-    create(data) {
+    async create(data) {
         const now = new Date().toISOString();
-        getDb().run(`
-            INSERT INTO posts (title, content, excerpt, slug, status, type, author, featured_media, categories, tags, meta, date, date_gmt, modified, modified_gmt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
-            data.title || '',
-            data.content || '',
-            data.excerpt || '',
-            data.slug || '',
-            data.status || 'draft',
-            data.type || 'post',
-            data.author || 1,
-            data.featured_media || 0,
-            JSON.stringify(data.categories || [1]),
-            JSON.stringify(data.tags || []),
-            JSON.stringify(data.meta || {}),
-            data.date || now,
-            data.date_gmt || now,
-            now,
-            now
-        ]);
-        saveDatabase();
-        const result = getDb().exec('SELECT last_insert_rowid() as id');
-        const id = result[0].values[0][0];
-        return this.getById(id);
+        const result = await getDb().execute({
+            sql: `INSERT INTO posts (title, content, excerpt, slug, status, type, author, featured_media, categories, tags, meta, date, date_gmt, modified, modified_gmt)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            args: [
+                data.title || '',
+                data.content || '',
+                data.excerpt || '',
+                data.slug || '',
+                data.status || 'draft',
+                data.type || 'post',
+                data.author || 1,
+                data.featured_media || 0,
+                JSON.stringify(data.categories || [1]),
+                JSON.stringify(data.tags || []),
+                JSON.stringify(data.meta || {}),
+                data.date || now,
+                data.date_gmt || now,
+                now,
+                now
+            ]
+        });
+        return this.getById(result.lastInsertRowid);
     }
 
-    update(id, data) {
-        const existing = this.getById(id);
+    async update(id, data) {
+        const existing = await this.getById(id);
         if (!existing) return null;
 
         const now = new Date().toISOString();
         const merged = { ...existing, ...data };
 
-        getDb().run(`
-            UPDATE posts SET
-                title = ?, content = ?, excerpt = ?, slug = ?, status = ?, type = ?,
-                author = ?, featured_media = ?, categories = ?, tags = ?, meta = ?,
-                modified = ?, modified_gmt = ?
-            WHERE id = ?
-        `, [
-            merged.title,
-            merged.content,
-            merged.excerpt,
-            merged.slug,
-            merged.status,
-            merged.type,
-            merged.author,
-            merged.featured_media,
-            JSON.stringify(merged.categories),
-            JSON.stringify(merged.tags),
-            JSON.stringify(merged.meta),
-            now,
-            now,
-            parseInt(id)
-        ]);
-        saveDatabase();
+        await getDb().execute({
+            sql: `UPDATE posts SET
+                    title = ?, content = ?, excerpt = ?, slug = ?, status = ?, type = ?,
+                    author = ?, featured_media = ?, categories = ?, tags = ?, meta = ?,
+                    modified = ?, modified_gmt = ?
+                  WHERE id = ?`,
+            args: [
+                merged.title,
+                merged.content,
+                merged.excerpt,
+                merged.slug,
+                merged.status,
+                merged.type,
+                merged.author,
+                merged.featured_media,
+                JSON.stringify(merged.categories),
+                JSON.stringify(merged.tags),
+                JSON.stringify(merged.meta),
+                now,
+                now,
+                parseInt(id)
+            ]
+        });
         return this.getById(id);
     }
 
-    delete(id) {
-        getDb().run('DELETE FROM posts WHERE id = ?', [parseInt(id)]);
-        saveDatabase();
+    async delete(id) {
+        await getDb().execute({ sql: 'DELETE FROM posts WHERE id = ?', args: [parseInt(id)] });
         return true;
     }
 
@@ -292,136 +251,108 @@ class PostsRepository {
 }
 
 class MediaRepository {
-    getAll() {
-        const stmt = getDb().prepare('SELECT * FROM media ORDER BY date DESC');
-        const rows = [];
-        while (stmt.step()) rows.push(stmt.getAsObject());
-        stmt.free();
-        return rows;
+    async getAll() {
+        const result = await getDb().execute('SELECT * FROM media ORDER BY date DESC');
+        return result.rows;
     }
 
-    getById(id) {
-        const stmt = getDb().prepare('SELECT * FROM media WHERE id = ?');
-        stmt.bind([parseInt(id)]);
-        if (stmt.step()) {
-            const row = stmt.getAsObject();
-            stmt.free();
-            return row;
-        }
-        stmt.free();
-        return null;
+    async getById(id) {
+        const result = await getDb().execute({
+            sql: 'SELECT * FROM media WHERE id = ?',
+            args: [parseInt(id)]
+        });
+        return result.rows.length > 0 ? result.rows[0] : null;
     }
 
-    create(data) {
+    async create(data) {
         const now = new Date().toISOString();
-        getDb().run(`
-            INSERT INTO media (title, slug, source_url, file, mime_type, alt_text, caption, description, author, date, date_gmt, modified, modified_gmt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
-            data.title || '',
-            data.slug || '',
-            data.source_url || '',
-            data.file || '',
-            data.mime_type || 'image/jpeg',
-            data.alt_text || '',
-            data.caption || '',
-            data.description || '',
-            data.author || 1,
-            now, now, now, now
-        ]);
-        saveDatabase();
-        const result = getDb().exec('SELECT last_insert_rowid() as id');
-        const id = result[0].values[0][0];
-        return this.getById(id);
+        const result = await getDb().execute({
+            sql: `INSERT INTO media (title, slug, source_url, file, mime_type, alt_text, caption, description, author, date, date_gmt, modified, modified_gmt)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            args: [
+                data.title || '',
+                data.slug || '',
+                data.source_url || '',
+                data.file || '',
+                data.mime_type || 'image/jpeg',
+                data.alt_text || '',
+                data.caption || '',
+                data.description || '',
+                data.author || 1,
+                now, now, now, now
+            ]
+        });
+        return this.getById(result.lastInsertRowid);
     }
 
-    update(id, data) {
-        const existing = this.getById(id);
+    async update(id, data) {
+        const existing = await this.getById(id);
         if (!existing) return null;
 
         const now = new Date().toISOString();
-        getDb().run(`
-            UPDATE media SET alt_text = ?, title = ?, caption = ?, description = ?, modified = ?, modified_gmt = ?
-            WHERE id = ?
-        `, [
-            data.alt_text ?? existing.alt_text,
-            data.title ?? existing.title,
-            data.caption ?? existing.caption,
-            data.description ?? existing.description,
-            now, now, parseInt(id)
-        ]);
-        saveDatabase();
+        await getDb().execute({
+            sql: `UPDATE media SET alt_text = ?, title = ?, caption = ?, description = ?, modified = ?, modified_gmt = ?
+                  WHERE id = ?`,
+            args: [
+                data.alt_text ?? existing.alt_text,
+                data.title ?? existing.title,
+                data.caption ?? existing.caption,
+                data.description ?? existing.description,
+                now, now, parseInt(id)
+            ]
+        });
         return this.getById(id);
     }
 
-    delete(id) {
-        getDb().run('DELETE FROM media WHERE id = ?', [parseInt(id)]);
-        saveDatabase();
+    async delete(id) {
+        await getDb().execute({ sql: 'DELETE FROM media WHERE id = ?', args: [parseInt(id)] });
         return true;
     }
 }
 
 class CategoriesRepository {
-    getAll() {
-        const stmt = getDb().prepare('SELECT * FROM categories ORDER BY name');
-        const rows = [];
-        while (stmt.step()) rows.push(stmt.getAsObject());
-        stmt.free();
-        return rows;
+    async getAll() {
+        const result = await getDb().execute('SELECT * FROM categories ORDER BY name');
+        return result.rows;
     }
 
-    getById(id) {
-        const stmt = getDb().prepare('SELECT * FROM categories WHERE id = ?');
-        stmt.bind([parseInt(id)]);
-        if (stmt.step()) {
-            const row = stmt.getAsObject();
-            stmt.free();
-            return row;
-        }
-        stmt.free();
-        return null;
+    async getById(id) {
+        const result = await getDb().execute({
+            sql: 'SELECT * FROM categories WHERE id = ?',
+            args: [parseInt(id)]
+        });
+        return result.rows.length > 0 ? result.rows[0] : null;
     }
 
-    create(data) {
-        getDb().run('INSERT INTO categories (name, slug, description, parent, count) VALUES (?, ?, ?, ?, ?)', [
-            data.name, data.slug, data.description || '', data.parent || 0, 0
-        ]);
-        saveDatabase();
-        const result = getDb().exec('SELECT last_insert_rowid() as id');
-        const id = result[0].values[0][0];
-        return this.getById(id);
+    async create(data) {
+        const result = await getDb().execute({
+            sql: 'INSERT INTO categories (name, slug, description, parent, count) VALUES (?, ?, ?, ?, ?)',
+            args: [data.name, data.slug, data.description || '', data.parent || 0, 0]
+        });
+        return this.getById(result.lastInsertRowid);
     }
 }
 
 class TagsRepository {
-    getAll() {
-        const stmt = getDb().prepare('SELECT * FROM tags ORDER BY name');
-        const rows = [];
-        while (stmt.step()) rows.push(stmt.getAsObject());
-        stmt.free();
-        return rows;
+    async getAll() {
+        const result = await getDb().execute('SELECT * FROM tags ORDER BY name');
+        return result.rows;
     }
 
-    getById(id) {
-        const stmt = getDb().prepare('SELECT * FROM tags WHERE id = ?');
-        stmt.bind([parseInt(id)]);
-        if (stmt.step()) {
-            const row = stmt.getAsObject();
-            stmt.free();
-            return row;
-        }
-        stmt.free();
-        return null;
+    async getById(id) {
+        const result = await getDb().execute({
+            sql: 'SELECT * FROM tags WHERE id = ?',
+            args: [parseInt(id)]
+        });
+        return result.rows.length > 0 ? result.rows[0] : null;
     }
 
-    create(data) {
-        getDb().run('INSERT INTO tags (name, slug, description, count) VALUES (?, ?, ?, ?)', [
-            data.name, data.slug, data.description || '', 0
-        ]);
-        saveDatabase();
-        const result = getDb().exec('SELECT last_insert_rowid() as id');
-        const id = result[0].values[0][0];
-        return this.getById(id);
+    async create(data) {
+        const result = await getDb().execute({
+            sql: 'INSERT INTO tags (name, slug, description, count) VALUES (?, ?, ?, ?)',
+            args: [data.name, data.slug, data.description || '', 0]
+        });
+        return this.getById(result.lastInsertRowid);
     }
 }
 
@@ -429,7 +360,6 @@ class TagsRepository {
 module.exports = {
     initDatabase,
     getDb,
-    saveDatabase,
     posts: new PostsRepository(),
     media: new MediaRepository(),
     categories: new CategoriesRepository(),

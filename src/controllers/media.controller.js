@@ -1,6 +1,5 @@
 /**
- * Media Controller
- * Handles media upload and management
+ * Media Controller (Turso async version)
  */
 
 const db = require('../models/database');
@@ -50,113 +49,138 @@ function formatMedia(media, req) {
 }
 
 // GET /wp-json/wp/v2/media
-exports.list = (req, res) => {
-    const media = db.media.getAll();
-    res.json(media.map(m => formatMedia(m, req)));
+exports.list = async (req, res) => {
+    try {
+        const media = await db.media.getAll();
+        res.json(media.map(m => formatMedia(m, req)));
+    } catch (error) {
+        console.error('Error listing media:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 };
 
 // GET /wp-json/wp/v2/media/:id
-exports.get = (req, res) => {
-    const media = db.media.getById(req.params.id);
-    if (!media) {
-        return res.status(404).json({
-            code: 'rest_post_invalid_id',
-            message: 'ID de mídia inválido.',
-            data: { status: 404 }
-        });
+exports.get = async (req, res) => {
+    try {
+        const media = await db.media.getById(req.params.id);
+        if (!media) {
+            return res.status(404).json({
+                code: 'rest_post_invalid_id',
+                message: 'ID de mídia inválido.',
+                data: { status: 404 }
+            });
+        }
+        res.json(formatMedia(media, req));
+    } catch (error) {
+        console.error('Error getting media:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-    res.json(formatMedia(media, req));
 };
 
 // POST /wp-json/wp/v2/media (Upload via multer)
-exports.upload = (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({
-            code: 'rest_upload_no_data',
-            message: 'Nenhum dado de arquivo foi enviado.',
-            data: { status: 400 }
+exports.upload = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                code: 'rest_upload_no_data',
+                message: 'Nenhum dado de arquivo foi enviado.',
+                data: { status: 400 }
+            });
+        }
+
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const filename = req.file.filename;
+
+        const media = await db.media.create({
+            title: req.file.originalname || filename,
+            slug: slugify(req.file.originalname || filename),
+            source_url: `${baseUrl}/uploads/${filename}`,
+            file: filename,
+            mime_type: req.file.mimetype || 'image/jpeg',
+            alt_text: '',
+            caption: '',
+            description: '',
+            author: 1
         });
+
+        console.log(`[MEDIA] Upload: "${media.title}" (ID: ${media.id})`);
+        res.status(201).json(formatMedia(media, req));
+    } catch (error) {
+        console.error('Error uploading media:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const filename = req.file.filename;
-
-    const media = db.media.create({
-        title: req.file.originalname || filename,
-        slug: slugify(req.file.originalname || filename),
-        source_url: `${baseUrl}/uploads/${filename}`,
-        file: filename,
-        mime_type: req.file.mimetype || 'image/jpeg',
-        alt_text: '',
-        caption: '',
-        description: '',
-        author: 1
-    });
-
-    console.log(`[MEDIA] Upload: "${media.title}" (ID: ${media.id})`);
-    res.status(201).json(formatMedia(media, req));
 };
 
 // POST /wp-json/wp/v2/media/:id (Update attributes)
-exports.update = (req, res) => {
-    const { alt_text, title, caption, description } = req.body;
+exports.update = async (req, res) => {
+    try {
+        const { alt_text, title, caption, description } = req.body;
 
-    const media = db.media.update(req.params.id, {
-        alt_text: alt_text || '',
-        title: title || '',
-        caption: caption || '',
-        description: description || ''
-    });
-
-    if (!media) {
-        return res.status(404).json({
-            code: 'rest_post_invalid_id',
-            message: 'ID de mídia inválido.',
-            data: { status: 404 }
+        const media = await db.media.update(req.params.id, {
+            alt_text: alt_text || '',
+            title: title || '',
+            caption: caption || '',
+            description: description || ''
         });
-    }
 
-    console.log(`[MEDIA UPDATE] Atualizado: "${media.title}" (ID: ${media.id})`);
-    res.json(formatMedia(media, req));
+        if (!media) {
+            return res.status(404).json({
+                code: 'rest_post_invalid_id',
+                message: 'ID de mídia inválido.',
+                data: { status: 404 }
+            });
+        }
+
+        console.log(`[MEDIA UPDATE] Atualizado: "${media.title}" (ID: ${media.id})`);
+        res.json(formatMedia(media, req));
+    } catch (error) {
+        console.error('Error updating media:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 };
 
 // Binary upload handler (for n8n-style uploads)
 exports.uploadBinary = (UPLOADS_DIR) => {
-    return (req, res, next) => {
+    return async (req, res, next) => {
         if (req.file) return next();
 
         const contentType = req.headers['content-type'] || '';
         const contentDisposition = req.headers['content-disposition'] || '';
 
         if (contentType.includes('image/') || contentType.includes('application/octet-stream')) {
-            const filenameMatch = contentDisposition.match(/filename="?(.+?)"?(?:;|$)/);
-            const filename = filenameMatch ? filenameMatch[1] : `upload-${Date.now()}.jpg`;
-            const filepath = path.join(UPLOADS_DIR, `${Date.now()}-${filename}`);
+            try {
+                const filenameMatch = contentDisposition.match(/filename="?(.+?)"?(?:;|$)/);
+                const filename = filenameMatch ? filenameMatch[1] : `upload-${Date.now()}.jpg`;
+                const filepath = path.join(UPLOADS_DIR, `${Date.now()}-${filename}`);
 
-            const chunks = [];
-            req.on('data', chunk => chunks.push(chunk));
-            req.on('end', () => {
-                const buffer = Buffer.concat(chunks);
-                fs.writeFileSync(filepath, buffer);
+                const chunks = [];
+                req.on('data', chunk => chunks.push(chunk));
+                req.on('end', async () => {
+                    const buffer = Buffer.concat(chunks);
+                    fs.writeFileSync(filepath, buffer);
 
-                const baseUrl = `${req.protocol}://${req.get('host')}`;
-                const savedFilename = path.basename(filepath);
+                    const baseUrl = `${req.protocol}://${req.get('host')}`;
+                    const savedFilename = path.basename(filepath);
 
-                const media = db.media.create({
-                    title: filename,
-                    slug: slugify(filename),
-                    source_url: `${baseUrl}/uploads/${savedFilename}`,
-                    file: savedFilename,
-                    mime_type: contentType,
-                    alt_text: '',
-                    caption: '',
-                    description: '',
-                    author: 1
+                    const media = await db.media.create({
+                        title: filename,
+                        slug: slugify(filename),
+                        source_url: `${baseUrl}/uploads/${savedFilename}`,
+                        file: savedFilename,
+                        mime_type: contentType,
+                        alt_text: '',
+                        caption: '',
+                        description: '',
+                        author: 1
+                    });
+
+                    console.log(`[MEDIA BINARY] Upload: "${media.title}" (ID: ${media.id})`);
+                    res.status(201).json(formatMedia(media, req));
                 });
-
-                console.log(`[MEDIA BINARY] Upload: "${media.title}" (ID: ${media.id})`);
-                res.status(201).json(formatMedia(media, req));
-            });
+            } catch (error) {
+                console.error('Error uploading binary:', error);
+                res.status(500).json({ error: 'Internal server error' });
+            }
         } else {
             next();
         }

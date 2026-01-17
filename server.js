@@ -138,15 +138,18 @@ app.get('/wp-json', (req, res) => {
 // HEALTH CHECK
 // ============================================
 
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
     try {
+        const posts = await db.posts.count();
+        const media = await db.media.getAll();
+        const categories = await db.categories.getAll();
         res.json({
             status: 'ok',
             timestamp: new Date().toISOString(),
-            database: 'sqlite (sql.js)',
-            posts: db.posts.count(),
-            media: db.media.getAll().length,
-            categories: db.categories.getAll().length
+            database: 'turso',
+            posts: posts,
+            media: media.length,
+            categories: categories.length
         });
     } catch (e) {
         res.json({

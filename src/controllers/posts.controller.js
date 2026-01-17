@@ -1,6 +1,6 @@
 /**
  * Posts Controller
- * Handles all posts-related business logic
+ * Handles all posts-related business logic (Turso async version)
  */
 
 const db = require('../models/database');
@@ -43,95 +43,120 @@ function formatPost(post, req) {
 }
 
 // GET /wp-json/wp/v2/posts
-exports.list = (req, res) => {
-    const { per_page = 10, page = 1, status, categories, tags, search, type } = req.query;
+exports.list = async (req, res) => {
+    try {
+        const { per_page = 10, page = 1, status, categories, tags, search, type } = req.query;
 
-    const filters = { per_page, page, status, search, type };
-    let posts = db.posts.getAll(filters);
+        const filters = { per_page, page, status, search, type };
+        let posts = await db.posts.getAll(filters);
 
-    // Filter by categories/tags (JSON arrays in SQLite)
-    if (categories) {
-        const catId = parseInt(categories);
-        posts = posts.filter(p => p.categories.includes(catId));
+        // Filter by categories/tags (JSON arrays)
+        if (categories) {
+            const catId = parseInt(categories);
+            posts = posts.filter(p => p.categories.includes(catId));
+        }
+        if (tags) {
+            const tagId = parseInt(tags);
+            posts = posts.filter(p => p.tags.includes(tagId));
+        }
+
+        const total = await db.posts.count({ status, type });
+        const totalPages = Math.ceil(total / per_page);
+
+        res.set({
+            'X-WP-Total': total,
+            'X-WP-TotalPages': totalPages
+        });
+
+        res.json(posts.map(p => formatPost(p, req)));
+    } catch (error) {
+        console.error('Error listing posts:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-    if (tags) {
-        const tagId = parseInt(tags);
-        posts = posts.filter(p => p.tags.includes(tagId));
-    }
-
-    const total = db.posts.count({ status, type });
-    const totalPages = Math.ceil(total / per_page);
-
-    res.set({
-        'X-WP-Total': total,
-        'X-WP-TotalPages': totalPages
-    });
-
-    res.json(posts.map(p => formatPost(p, req)));
 };
 
 // GET /wp-json/wp/v2/posts/:id
-exports.get = (req, res) => {
-    const post = db.posts.getById(req.params.id);
-    if (!post) {
-        return res.status(404).json({
-            code: 'rest_post_invalid_id',
-            message: 'ID de post inválido.',
-            data: { status: 404 }
-        });
+exports.get = async (req, res) => {
+    try {
+        const post = await db.posts.getById(req.params.id);
+        if (!post) {
+            return res.status(404).json({
+                code: 'rest_post_invalid_id',
+                message: 'ID de post inválido.',
+                data: { status: 404 }
+            });
+        }
+        res.json(formatPost(post, req));
+    } catch (error) {
+        console.error('Error getting post:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-    res.json(formatPost(post, req));
 };
 
 // POST /wp-json/wp/v2/posts
-exports.create = (req, res) => {
-    const { title, content, excerpt, status, categories, tags, featured_media, author, date, slug, type } = req.body;
+exports.create = async (req, res) => {
+    try {
+        const { title, content, excerpt, status, categories, tags, featured_media, author, date, slug, type } = req.body;
 
-    const post = db.posts.create({
-        title: title || '',
-        content: content || '',
-        excerpt: excerpt || '',
-        slug: slug || slugify(title || `post-${Date.now()}`),
-        status: status || 'draft',
-        type: type || 'post',
-        categories: categories ? (Array.isArray(categories) ? categories.map(Number) : [parseInt(categories)]) : [1],
-        tags: tags ? (Array.isArray(tags) ? tags.map(Number) : [parseInt(tags)]) : [],
-        featured_media: featured_media ? parseInt(featured_media) : 0,
-        author: author ? parseInt(author) : 1,
-        date: date || new Date().toISOString(),
-        meta: {}
-    });
+        const post = await db.posts.create({
+            title: title || '',
+            content: content || '',
+            excerpt: excerpt || '',
+            slug: slug || slugify(title || `post-${Date.now()}`),
+            status: status || 'draft',
+            type: type || 'post',
+            categories: categories ? (Array.isArray(categories) ? categories.map(Number) : [parseInt(categories)]) : [1],
+            tags: tags ? (Array.isArray(tags) ? tags.map(Number) : [parseInt(tags)]) : [],
+            featured_media: featured_media ? parseInt(featured_media) : 0,
+            author: author ? parseInt(author) : 1,
+            date: date || new Date().toISOString(),
+            meta: {}
+        });
 
-    console.log(`[POST] Criado: "${post.title}" (ID: ${post.id})`);
-    res.status(201).json(formatPost(post, req));
+        console.log(`[POST] Criado: "${post.title}" (ID: ${post.id})`);
+        res.status(201).json(formatPost(post, req));
+    } catch (error) {
+        console.error('Error creating post:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 };
 
 // PUT/POST /wp-json/wp/v2/posts/:id
-exports.update = (req, res) => {
-    const post = db.posts.update(req.params.id, req.body);
-    if (!post) {
-        return res.status(404).json({
-            code: 'rest_post_invalid_id',
-            message: 'ID de post inválido.',
-            data: { status: 404 }
-        });
+exports.update = async (req, res) => {
+    try {
+        const post = await db.posts.update(req.params.id, req.body);
+        if (!post) {
+            return res.status(404).json({
+                code: 'rest_post_invalid_id',
+                message: 'ID de post inválido.',
+                data: { status: 404 }
+            });
+        }
+        console.log(`[PUT] Atualizado: "${post.title}" (ID: ${post.id})`);
+        res.json(formatPost(post, req));
+    } catch (error) {
+        console.error('Error updating post:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-    console.log(`[PUT] Atualizado: "${post.title}" (ID: ${post.id})`);
-    res.json(formatPost(post, req));
 };
 
 // DELETE /wp-json/wp/v2/posts/:id
-exports.remove = (req, res) => {
-    const post = db.posts.getById(req.params.id);
-    if (!post) {
-        return res.status(404).json({
-            code: 'rest_post_invalid_id',
-            message: 'ID de post inválido.',
-            data: { status: 404 }
-        });
-    }
+exports.remove = async (req, res) => {
+    try {
+        const post = await db.posts.getById(req.params.id);
+        if (!post) {
+            return res.status(404).json({
+                code: 'rest_post_invalid_id',
+                message: 'ID de post inválido.',
+                data: { status: 404 }
+            });
+        }
 
-    db.posts.delete(req.params.id);
-    console.log(`[DELETE] Deletado: "${post.title}" (ID: ${post.id})`);
-    res.json({ deleted: true, previous: formatPost(post, req) });
+        await db.posts.delete(req.params.id);
+        console.log(`[DELETE] Deletado: "${post.title}" (ID: ${post.id})`);
+        res.json({ deleted: true, previous: formatPost(post, req) });
+    } catch (error) {
+        console.error('Error deleting post:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 };
