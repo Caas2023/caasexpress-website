@@ -1,24 +1,15 @@
 /**
  * WordPress Import Script
- * Importa posts do WordPress para o banco Turso
+ * Importa posts do WordPress para o banco SQLite Local
  * 
  * Uso: node import-wordpress.js
  */
 
 require('dotenv').config();
-const { createClient } = require('@libsql/client');
+const { initDatabase, getDb } = require('./src/models/database');
 
 // Configuração
 const WP_URL = 'https://caasexpress.com';
-const TURSO_URL = process.env.TURSO_DATABASE_URL;
-const TURSO_TOKEN = process.env.TURSO_AUTH_TOKEN;
-
-if (!TURSO_URL || !TURSO_TOKEN) {
-    console.error('❌ Configure TURSO_DATABASE_URL e TURSO_AUTH_TOKEN no .env');
-    process.exit(1);
-}
-
-const db = createClient({ url: TURSO_URL, authToken: TURSO_TOKEN });
 
 async function fetchWordPressPosts() {
     console.log(`📡 Buscando posts de ${WP_URL}...`);
@@ -59,7 +50,8 @@ async function fetchWordPressPosts() {
 }
 
 async function importPosts(posts) {
-    console.log('📥 Importando posts para Turso...\n');
+    const db = getDb();
+    console.log('📥 Importando posts para Banco de Dados...\n');
 
     let imported = 0;
     let errors = 0;
@@ -155,13 +147,13 @@ async function importPosts(posts) {
 
 async function main() {
     console.log('═══════════════════════════════════════════════════');
-    console.log('   WordPress → Turso Import Script');
+    console.log('   WordPress → SQLite Import Script');
     console.log('═══════════════════════════════════════════════════\n');
 
     try {
-        // Testar conexão com Turso
-        console.log('🔗 Conectando ao Turso...');
-        await db.execute('SELECT 1');
+        // Inicializar banco (Turso ou Local)
+        console.log('🔗 Conectando ao banco de dados...');
+        await initDatabase();
         console.log('✅ Conexão OK\n');
 
         // Buscar posts do WordPress
