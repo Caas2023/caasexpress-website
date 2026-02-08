@@ -10,14 +10,17 @@
     { "src": "assets/**", "use": "@vercel/static" }
   ],
   "routes": [
+    { "src": "/(.*\\.css)", "dest": "/$1" },
+    { "src": "/(.*\\.js)", "dest": "/$1" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/admin.php", "dest": "/admin.php" },
+    { "src": "/blog.php", "dest": "/blog.php" },
+    { "src": "/webstories.php", "dest": "/webstories.php" },
     { "src": "/admin", "dest": "/admin.php" },
     { "src": "/blog", "dest": "/blog.php" },
     { "src": "/webstories", "dest": "/webstories.php" },
     { "src": "/web-stories/(.*)", "dest": "/webstories.php" },
     { "src": "/api/(.*)", "dest": "/api/index.php" },
-    { "src": "/(.*\\.css)", "dest": "/$1" },
-    { "src": "/(.*\\.js)", "dest": "/$1" },
-    { "src": "/assets/(.*)", "dest": "/assets/$1" },
     { "src": "/(.*)", "dest": "/index.php" }
   ]
 }
