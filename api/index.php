@@ -28,7 +28,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 // Pegar URI (path)
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 // Remover prefixos
-$path = str_replace('/backend/index.php', '', $path);
+$path = str_replace('/api/index.php', '', $path);
 // Normalizar o path para remover /index.php inicial se vier do router
 if (strpos($path, '/index.php/wp-json') === 0) {
     $path = str_replace('/index.php', '', $path);
