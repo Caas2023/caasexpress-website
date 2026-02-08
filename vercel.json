@@ -1,6 +1,12 @@
 {
   "builds": [
-    { "src": "api/index.php", "use": "vercel-php@0.8.0" },
+    { 
+      "src": "api/index.php", 
+      "use": "vercel-php@0.8.0",
+      "config": {
+        "includeFiles": "../src/**/*.php"
+      }
+    },
     { "src": "admin.php", "use": "vercel-php@0.8.0" },
     { "src": "blog.php", "use": "vercel-php@0.8.0" },
     { "src": "index.php", "use": "vercel-php@0.8.0" },
