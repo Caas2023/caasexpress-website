@@ -3,7 +3,7 @@
 spl_autoload_register(function ($class) {
     // Espaço de nome: Src\Controllers\PostController -> src/Controllers/PostController.php
     $prefix = 'Src\\';
-    $base_dir = __DIR__ . '/../src/';
+    $base_dir = __DIR__ . '/src/';
 
     $len = strlen($prefix);
     if (strncmp($prefix, $class, $len) !== 0) {
