@@ -38,7 +38,10 @@ const RemoteDB = {
 
     // Posts & Pages
     async getPosts(params = {}) {
-        const q = new URLSearchParams(params).toString();
+        // Padrão: carregar 100 posts para o admin ver todos
+        const defaults = { per_page: 100 };
+        const mergedParams = { ...defaults, ...params };
+        const q = new URLSearchParams(mergedParams).toString();
         const res = await fetch(`${this.BASE_URL}/posts?${q}`, { headers: this.headers() });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -120,15 +123,22 @@ const Repository = {
     },
 
     async getStats() {
-        // Aggregate stats
+        // Usa endpoint dedicado que conta do banco de dados
+        try {
+            const res = await fetch(`${RemoteDB.BASE_URL}/stats`, { headers: RemoteDB.headers() });
+            if (res.ok) return res.json();
+        } catch (e) {
+            console.error('Stats API error:', e);
+        }
+        // Fallback: contar arrays (menos preciso)
         const posts = await this.getPosts();
         const pages = await this.getPages();
         return { posts: posts.length, pages: pages.length, comments: 0 };
     },
 
-    async getPosts() {
+    async getPosts(params = {}) {
         try {
-            return (await RemoteDB.getPosts()).map(this.norm);
+            return (await RemoteDB.getPosts(params)).map(this.norm);
         } catch (e) {
             console.error('API Error:', e);
             // Return empty array to signal "No Data" instead of fake data
@@ -200,7 +210,7 @@ window.CaasAPI = {
     auth: { verifyBasicAuth: () => true },
     dashboard: { stats: () => Repository.getStats() },
     posts: {
-        list: () => Repository.getPosts(),
+        list: (params = {}) => Repository.getPosts(params),
         get: (id) => Repository.getPost(id),
         create: (d) => Repository.createPost({ ...d, type: 'post' }),
         update: (id, d) => Repository.updatePost(id, d),

@@ -151,27 +151,32 @@ function getDb() {
 
 class PostsRepository {
     async getAll(filters = {}) {
-        let query = 'SELECT * FROM posts WHERE 1=1';
+        let query = `
+            SELECT p.*, m.source_url as featured_media_url 
+            FROM posts p 
+            LEFT JOIN media m ON p.featured_media = m.id 
+            WHERE 1=1
+        `;
         const args = [];
 
         if (filters.status) {
-            query += ' AND status = ?';
+            query += ' AND p.status = ?';
             args.push(filters.status);
         }
         if (filters.type) {
-            query += ' AND type = ?';
+            query += ' AND p.type = ?';
             args.push(filters.type);
         }
         if (filters.search) {
-            query += ' AND (title LIKE ? OR content LIKE ?)';
+            query += ' AND (p.title LIKE ? OR p.content LIKE ?)';
             args.push(`%${filters.search}%`, `%${filters.search}%`);
         }
         if (filters.slug) {
-            query += ' AND slug = ?';
+            query += ' AND p.slug = ?';
             args.push(filters.slug);
         }
 
-        query += ' ORDER BY date DESC';
+        query += ' ORDER BY p.date DESC';
 
         if (filters.per_page) {
             query += ' LIMIT ?';
@@ -188,7 +193,12 @@ class PostsRepository {
 
     async getById(id) {
         const result = await getDb().execute({
-            sql: 'SELECT * FROM posts WHERE id = ?',
+            sql: `
+                SELECT p.*, m.source_url as featured_media_url 
+                FROM posts p 
+                LEFT JOIN media m ON p.featured_media = m.id 
+                WHERE p.id = ?
+            `,
             args: [parseInt(id)]
         });
         return result.rows.length > 0 ? this._parseRow(result.rows[0]) : null;

@@ -149,27 +149,117 @@ const AdminApp = {
     },
 
     // ============================================
-    // LISTS (Posts & Pages)
+    // LISTS (Posts & Pages) - Com Paginação
     // ============================================
-    async loadPosts() {
+    postsPage: 1,
+    postsPerPage: 20,
+    totalPosts: 0,
+
+    async loadPosts(page = 1) {
+        this.postsPage = page;
         const tbody = document.getElementById('posts-table-body');
         tbody.innerHTML = '<tr><td colspan="7">Carregando...</td></tr>';
-        const posts = await CaasAPI.posts.list();
-        if (!posts.length) { tbody.innerHTML = '<tr><td colspan="7">Nenhum post.</td></tr>'; return; }
+        
+        // Buscar posts com paginação e filtro de status
+        const params = { page: page, per_page: this.postsPerPage };
+        if (this.currentFilter && this.currentFilter !== 'all') {
+            params.status = this.currentFilter;
+        }
+        const posts = await CaasAPI.posts.list(params);
+        
+        // Buscar total de posts (considerando filtro)
+        const stats = await CaasAPI.dashboard.stats();
+        this.totalPosts = this.currentFilter === 'all' ? stats.posts : posts.length;
+        
+        // Atualizar contagens
+        this.loadStatusCounts();
+        
+        if (!posts.length) { 
+            tbody.innerHTML = '<tr><td colspan="7">Nenhum post.</td></tr>'; 
+            this.updatePagination();
+            return; 
+        }
 
-        tbody.innerHTML = posts.map(p => `
+        tbody.innerHTML = posts.map(p => {
+            const inbound = p.inbound_links || 0;
+            const outbound = p.outbound_links || 0;
+            const isOrphan = inbound === 0;
+            const tags = p.tags || p.ai_tags || '-';
+            
+            return `
             <tr>
                 <td><input type="checkbox"></td>
                 <td><strong><a href="#" onclick="AdminApp.editItem(${p.id}, 'post')">${p.title}</a></strong>
-                    <div class="row-actions"><a href="#" onclick="AdminApp.editItem(${p.id}, 'post')">Editar</a> | <a href="#" style="color:#b32d2e" onclick="AdminApp.deleteItem(${p.id}, 'posts')">Lixeira</a> | <a href="post.html?id=${p.id}" target="_blank">Ver</a></div>
+                    <div class="row-actions"><a href="#" onclick="AdminApp.editItem(${p.id}, 'post')">Editar</a> | <a href="#" style="color:#b32d2e" onclick="AdminApp.deleteItem(${p.id}, 'posts')">Lixeira</a> | <a href="https://caasexpresss.com/${p.slug}" target="_blank">Ver</a></div>
                 </td>
                 <td>admin</td>
                 <td>${p.category || 'Geral'}</td>
-                <td>-</td>
-                <td>-</td>
+                <td><small style="color:#888;">${tags}</small></td>
+                <td style="text-align:center;"><span style="background:${isOrphan ? '#7f1d1d' : '#14532d'}; color:#fff; padding:2px 8px; border-radius:4px; font-size:12px;">${inbound}</span></td>
+                <td style="text-align:center;"><span style="background:#1e3a5f; color:#fff; padding:2px 8px; border-radius:4px; font-size:12px;">${outbound}</span></td>
                 <td>${new Date(p.date || p.created_at || Date.now()).toLocaleDateString()}</td>
             </tr>
-        `).join('');
+        `}).join('');
+        
+        this.updatePagination();
+    },
+    
+    updatePagination() {
+        const totalPages = Math.ceil(this.totalPosts / this.postsPerPage);
+        const container = document.getElementById('posts-pagination');
+        if (!container) return;
+        
+        const start = (this.postsPage - 1) * this.postsPerPage + 1;
+        const end = Math.min(this.postsPage * this.postsPerPage, this.totalPosts);
+        
+        container.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #1e1e1e; border-radius: 8px; margin-top: 1rem;">
+                <span style="color: #888;">Mostrando ${start}-${end} de ${this.totalPosts} posts</span>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-sm" ${this.postsPage <= 1 ? 'disabled' : ''} onclick="AdminApp.loadPosts(${this.postsPage - 1})" style="padding: 0.5rem 1rem; background: ${this.postsPage <= 1 ? '#333' : '#E63946'}; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        ← Anterior
+                    </button>
+                    <span style="padding: 0.5rem 1rem; color: #fff;">Página ${this.postsPage} de ${totalPages}</span>
+                    <button class="btn btn-sm" ${this.postsPage >= totalPages ? 'disabled' : ''} onclick="AdminApp.loadPosts(${this.postsPage + 1})" style="padding: 0.5rem 1rem; background: ${this.postsPage >= totalPages ? '#333' : '#E63946'}; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Próximo →
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+    
+    // Filtro por status
+    currentFilter: 'all',
+    
+    async filterPosts(status) {
+        this.currentFilter = status;
+        this.postsPage = 1;
+        
+        // Atualizar classe active nos links
+        const links = document.querySelectorAll('#posts-status-filters a');
+        links.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('onclick').includes(`'${status}'`)) {
+                link.classList.add('active');
+            }
+        });
+        
+        // Recarregar posts com filtro
+        await this.loadPosts(1);
+    },
+    
+    async loadStatusCounts() {
+        try {
+            const res = await fetch('/wp-json/wp/v2/stats/status');
+            if (res.ok) {
+                const counts = await res.json();
+                document.getElementById('count-all').textContent = counts.all || 0;
+                document.getElementById('count-publish').textContent = counts.publish || 0;
+                document.getElementById('count-draft').textContent = counts.draft || 0;
+            }
+        } catch (e) {
+            console.error('Error loading status counts:', e);
+        }
     },
 
     async loadPages() {
@@ -240,6 +330,7 @@ const AdminApp = {
             document.getElementById('seo-title').value = meta.seo_title || '';
             document.getElementById('seo-desc').value = meta.seo_desc || '';
             document.getElementById('seo-keyword').value = meta.seo_keyword || '';
+            document.getElementById('auto-link-keywords').value = meta.auto_link_keywords || '';
 
             // Image Preview
             if (data.image) {
@@ -257,6 +348,10 @@ const AdminApp = {
             this.quill.root.innerHTML = '';
             document.getElementById('post-image-url').value = '';
             document.getElementById('featured-image-preview').style.backgroundImage = 'none';
+            document.getElementById('seo-title').value = '';
+            document.getElementById('seo-desc').value = '';
+            document.getElementById('seo-keyword').value = '';
+            document.getElementById('auto-link-keywords').value = '';
         }
         this.updateSEOPreview();
         this.loadCategoriesChecklist();
@@ -278,7 +373,8 @@ const AdminApp = {
         const meta = {
             seo_title: document.getElementById('seo-title').value,
             seo_desc: document.getElementById('seo-desc').value,
-            seo_keyword: document.getElementById('seo-keyword').value
+            seo_keyword: document.getElementById('seo-keyword').value,
+            auto_link_keywords: document.getElementById('auto-link-keywords').value
         };
 
         const data = { title, content, image, status, meta, type: this.currentEditType };
