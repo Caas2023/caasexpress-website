@@ -4,7 +4,10 @@
     { "src": "admin.php", "use": "vercel-php@0.8.0" },
     { "src": "blog.php", "use": "vercel-php@0.8.0" },
     { "src": "index.php", "use": "vercel-php@0.8.0" },
-    { "src": "webstories.php", "use": "vercel-php@0.8.0" }
+    { "src": "webstories.php", "use": "vercel-php@0.8.0" },
+    { "src": "*.css", "use": "@vercel/static" },
+    { "src": "*.js", "use": "@vercel/static" },
+    { "src": "assets/**", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/admin", "dest": "/admin.php" },
@@ -12,6 +15,9 @@
     { "src": "/webstories", "dest": "/webstories.php" },
     { "src": "/web-stories/(.*)", "dest": "/webstories.php" },
     { "src": "/api/(.*)", "dest": "/api/index.php" },
+    { "src": "/(.*\\.css)", "dest": "/$1" },
+    { "src": "/(.*\\.js)", "dest": "/$1" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
     { "src": "/(.*)", "dest": "/index.php" }
   ]
 }
