@@ -1,27 +1,17 @@
 <?php
-// Autoloader Simples (padrão PSR-4 simplificado)
-spl_autoload_register(function ($class) {
-    // Espaço de nome: Src\Controllers\PostController -> src/Controllers/PostController.php
-    $prefix = 'Src\\';
-    $base_dir = __DIR__ . '/src/';
-
-    $len = strlen($prefix);
-    if (strncmp($prefix, $class, $len) !== 0) {
-        return;
-    }
-
-    $relative_class = substr($class, $len);
-    $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
-
-    if (file_exists($file)) {
-        require $file;
-    }
-});
+// Includes diretos (Vercel lambda não suporta bem autoloader PSR-4)
+require_once __DIR__ . '/src/Config/Database.php';
+require_once __DIR__ . '/src/Utils/Response.php';
+require_once __DIR__ . '/src/Utils/Auth.php';
+require_once __DIR__ . '/src/Controllers/PostController.php';
+require_once __DIR__ . '/src/Controllers/MediaController.php';
+require_once __DIR__ . '/src/Controllers/UserController.php';
 
 use Src\Controllers\PostController;
 use Src\Controllers\MediaController;
 use Src\Controllers\UserController;
 use Src\Utils\Response;
+
 
 // Verificar Método HTTP
 $method = $_SERVER['REQUEST_METHOD'];
