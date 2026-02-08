@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/index.php": { "runtime": "vercel-php@0.7.0" },
+    "backend/index.php": { "runtime": "vercel-php@0.7.0" },
     "admin.php": { "runtime": "vercel-php@0.7.0" },
     "blog.php": { "runtime": "vercel-php@0.7.0" },
     "index.php": { "runtime": "vercel-php@0.7.0" },
@@ -11,7 +11,7 @@
     { "src": "/blog", "dest": "/blog.php" },
     { "src": "/webstories", "dest": "/webstories.php" },
     { "src": "/web-stories/(.*)", "dest": "/webstories.php" },
-    { "src": "/api/(.*)", "dest": "/api/index.php" },
+    { "src": "/api/(.*)", "dest": "/backend/index.php" },
     { "src": "/(.*)", "dest": "/index.php" }
   ]
 }
