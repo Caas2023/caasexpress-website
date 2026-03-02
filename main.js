@@ -212,18 +212,20 @@ function initContactForm() {
     // Get form data
     const formData = new FormData(form);
     const name = formData.get('name');
-    const phone = formData.get('phone');
-    const email = formData.get('email');
-    const service = formData.get('service');
-    const message = formData.get('message');
+    const company = formData.get('company');
+    const pickup = formData.get('pickup');
+    const delivery = formData.get('delivery');
+    const cargo = formData.get('cargo');
+    const notes = formData.get('notes');
     
     // Build WhatsApp message
-    let whatsappMessage = `Olá! Gostaria de solicitar um orçamento:\n\n`;
-    whatsappMessage += `*Nome:* ${name}\n`;
-    whatsappMessage += `*Telefone:* ${phone}\n`;
-    if (email) whatsappMessage += `*E-mail:* ${email}\n`;
-    whatsappMessage += `*Serviço:* ${getServiceName(service)}\n`;
-    if (message) whatsappMessage += `*Detalhes:* ${message}\n`;
+    let whatsappMessage = `Olá! Gostaria de solicitar um orçamento de entrega:\n\n`;
+    if (name) whatsappMessage += `*Nome:* ${name}\n`;
+    if (company) whatsappMessage += `*Empresa:* ${company}\n`;
+    if (pickup) whatsappMessage += `*Coleta:* ${pickup}\n`;
+    if (delivery) whatsappMessage += `*Entrega:* ${delivery}\n`;
+    if (cargo) whatsappMessage += `*Carga:* ${cargo}\n`;
+    if (notes) whatsappMessage += `*Observação:* ${notes}\n`;
     
     // Encode message for URL
     const encodedMessage = encodeURIComponent(whatsappMessage);
