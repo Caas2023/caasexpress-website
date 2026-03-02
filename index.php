@@ -409,13 +409,7 @@
               </svg>
               Motoboys Treinados
             </div>
-            <div class="about-feature">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path
-                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-              </svg>
-              Seguro de Carga
-            </div>
+
             <div class="about-feature">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path
@@ -518,37 +512,31 @@
         <div class="contact-form-wrapper animate-on-scroll">
           <h3 style="margin-bottom: var(--space-lg); color: var(--dark);">Solicite um Orçamento</h3>
           <form class="contact-form" id="contact-form">
+            <div class="form-group">
+              <label for="company">Nome da Empresa *</label>
+              <input type="text" id="company" name="company" placeholder="Nome da sua empresa" required>
+            </div>
+
             <div class="form-row">
               <div class="form-group">
-                <label for="name">Nome Completo *</label>
-                <input type="text" id="name" name="name" placeholder="Seu nome" required>
+                <label for="pickup">Endereço de Coleta *</label>
+                <input type="text" id="pickup" name="pickup" placeholder="Endereço de retirada da mercadoria" required>
               </div>
               <div class="form-group">
-                <label for="phone">Telefone / WhatsApp *</label>
-                <input type="tel" id="phone" name="phone" placeholder="(11) 99999-9999" required>
+                <label for="delivery">Endereço de Entrega *</label>
+                <input type="text" id="delivery" name="delivery" placeholder="Endereço de destino da mercadoria" required>
               </div>
             </div>
 
             <div class="form-group">
-              <label for="email">E-mail</label>
-              <input type="email" id="email" name="email" placeholder="seu@email.com">
+              <label for="cargo">O que vai ser transportado? *</label>
+              <input type="text" id="cargo" name="cargo" placeholder="Ex: Documentos, Caixas de 5kg, Peças automotivas..." required>
             </div>
 
             <div class="form-group">
-              <label for="service">Tipo de Serviço *</label>
-              <select id="service" name="service" required>
-                <option value="">Selecione o serviço</option>
-                <option value="expressa">Entrega Expressa</option>
-                <option value="agendada">Entrega Agendada</option>
-                <option value="urgente">Entrega Urgente</option>
-                <option value="outro">Outro</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="message">Detalhes da Entrega</label>
-              <textarea id="message" name="message"
-                placeholder="Endereço de coleta, destino, tipo de item..."></textarea>
+              <label for="notes">Observação</label>
+              <textarea id="notes" name="notes"
+                placeholder="Detalhes adicionais, restrições de horário, etc..."></textarea>
             </div>
 
             <button type="submit" class="btn btn-primary btn-lg">
