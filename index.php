@@ -518,8 +518,8 @@
                 <input type="text" id="name" name="name" placeholder="Seu nome" required>
               </div>
               <div class="form-group">
-                <label for="company">Nome da Empresa *</label>
-                <input type="text" id="company" name="company" placeholder="Nome da empresa" required>
+                <label for="company">Nome da Empresa</label>
+                <input type="text" id="company" name="company" placeholder="Nome da empresa">
               </div>
             </div>
             <div class="form-row">
