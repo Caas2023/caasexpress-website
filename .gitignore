@@ -4,3 +4,8 @@ uploads
 data
 
 temp_posts.json
+api/src/
+db/*.sqlite*
+data/*.db*
+tools/*.bat
+.vscode/

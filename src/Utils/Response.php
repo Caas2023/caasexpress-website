@@ -2,11 +2,18 @@
 namespace Src\Utils;
 
 class Response {
-    public static function json($data, $status = 200) {
+    public static function json($data, $status = 200, $ttl = null) {
         http_response_code($status);
         
         // Content Type
         header('Content-Type: application/json; charset=utf-8');
+
+        // Edge Cache (Vercel) Headers
+        if ($ttl !== null && !isset($_GET['bypassCache'])) {
+            header("Cache-Control: public, s-maxage={$ttl}, stale-while-revalidate=86400");
+        } else {
+            header("Cache-Control: no-cache, no-store, must-revalidate");
+        }
         
         // CORS - Restringir em produção
         $allowedOrigins = ['http://localhost:8000', 'https://caasexpresss.com'];

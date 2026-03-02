@@ -4,7 +4,7 @@
 
 const express = require('express');
 const router = express.Router();
-const categoriesController = require('../controllers/categories.controller');
+const categoriesController = require('../controllers/js/categories.controller');
 
 module.exports = (authenticate) => {
     router.get('/', authenticate, categoriesController.list);

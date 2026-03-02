@@ -1,11 +1,11 @@
 <?php
 // Includes diretos (Vercel lambda não suporta bem autoloader PSR-4)
-require_once __DIR__ . '/src/Config/Database.php';
-require_once __DIR__ . '/src/Utils/Response.php';
-require_once __DIR__ . '/src/Utils/Auth.php';
-require_once __DIR__ . '/src/Controllers/PostController.php';
-require_once __DIR__ . '/src/Controllers/MediaController.php';
-require_once __DIR__ . '/src/Controllers/UserController.php';
+require_once __DIR__ . '/../src/Config/Database.php';
+require_once __DIR__ . '/../src/Utils/Response.php';
+require_once __DIR__ . '/../src/Utils/Auth.php';
+require_once __DIR__ . '/../src/controllers/PostController.php';
+require_once __DIR__ . '/../src/controllers/MediaController.php';
+require_once __DIR__ . '/../src/controllers/UserController.php';
 
 use Src\Controllers\PostController;
 use Src\Controllers\MediaController;

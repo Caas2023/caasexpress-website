@@ -4,7 +4,7 @@
 
 const express = require('express');
 const router = express.Router();
-const tagsController = require('../controllers/tags.controller');
+const tagsController = require('../controllers/js/tags.controller');
 
 module.exports = (authenticate) => {
     router.get('/', authenticate, tagsController.list);

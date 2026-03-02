@@ -4,7 +4,7 @@
 
 const express = require('express');
 const router = express.Router();
-const postsController = require('../controllers/posts.controller');
+const postsController = require('../controllers/js/posts.controller');
 
 module.exports = (authenticate) => {
     router.get('/', authenticate, postsController.list);

@@ -4,7 +4,7 @@
 
 const express = require('express');
 const router = express.Router();
-const mediaController = require('../controllers/media.controller');
+const mediaController = require('../controllers/js/media.controller');
 
 module.exports = (authenticate, upload, UPLOADS_DIR) => {
     router.get('/', authenticate, mediaController.list);

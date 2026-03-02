@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 /**
  * Authentication Middleware
  * WordPress-compatible Basic Auth and Bearer Token authentication
@@ -18,7 +20,11 @@ function authenticate(CONFIG) {
                 const normalizedPassword = password.replace(/\s+/g, ' ').trim();
                 const configPassword = (CONFIG.API_PASSWORD || '').replace(/\s+/g, ' ').trim();
 
-                if (user === CONFIG.API_USER && normalizedPassword === configPassword) {
+                // SECURITY: Prevent Timing Attacks
+                const bufA = Buffer.from(normalizedPassword);
+                const bufB = Buffer.from(configPassword);
+
+                if (user === CONFIG.API_USER && bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB)) {
                     req.user = { id: 1, name: user, role: 'administrator' };
                     return next();
                 }
@@ -30,14 +36,22 @@ function authenticate(CONFIG) {
         // Bearer Token
         if (authHeader.startsWith('Bearer ')) {
             const token = authHeader.split(' ')[1];
-            if (token === CONFIG.BEARER_TOKEN) {
+
+            const bufA = Buffer.from(token);
+            const bufB = Buffer.from(CONFIG.BEARER_TOKEN || '');
+
+            if (bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB)) {
                 req.user = { id: 1, name: 'api', role: 'administrator' };
                 return next();
             }
         }
 
-        // Allow GET requests without auth (public read)
-        if (req.method === 'GET') {
+        // SECURITY: Allow only specific public GET paths, deny by default
+        const publicPaths = ['/wp-json/wp/v2/posts', '/wp-json/wp/v2/categories', '/wp-json/wp/v2/tags', '/wp-json/wp/v2/web-stories'];
+        const isPublicRoute = publicPaths.some(p => req.path.startsWith(p));
+
+        if (req.method === 'GET' && isPublicRoute) {
+            // Further logic should ideally filter drafts/private posts inside the controller
             return next();
         }
 
