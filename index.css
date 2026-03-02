@@ -1304,6 +1304,10 @@ img {
   .hero-buttons .btn {
     width: 100%;
   }
+
+  .hero-image {
+    display: none !important;
+  }
   
   .hero-features {
     flex-direction: column;
