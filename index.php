@@ -512,11 +512,16 @@
         <div class="contact-form-wrapper animate-on-scroll">
           <h3 style="margin-bottom: var(--space-lg); color: var(--dark);">Solicite um Orçamento</h3>
           <form class="contact-form" id="contact-form">
-            <div class="form-group">
-              <label for="company">Nome da Empresa *</label>
-              <input type="text" id="company" name="company" placeholder="Nome da sua empresa" required>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="name">Nome Completo *</label>
+                <input type="text" id="name" name="name" placeholder="Seu nome" required>
+              </div>
+              <div class="form-group">
+                <label for="company">Nome da Empresa *</label>
+                <input type="text" id="company" name="company" placeholder="Nome da empresa" required>
+              </div>
             </div>
-
             <div class="form-row">
               <div class="form-group">
                 <label for="pickup">Endereço de Coleta *</label>
