@@ -24,7 +24,6 @@
 </head>
 
 <body>
-    <!-- Header -->
     <header class="header scrolled" id="header">
         <div class="container">
             <a href="index.php" class="logo">
@@ -60,7 +59,6 @@
         </div>
     </header>
 
-    <!-- Blog Hero -->
     <section class="blog-hero">
         <div class="container">
             <div class="section-subtitle">
@@ -75,11 +73,9 @@
         </div>
     </section>
 
-    <!-- Blog Posts -->
     <section class="blog-section">
         <div class="container">
             <div class="blog-grid" id="blog-grid">
-                <!-- Loading skeleton - será substituído pelo JavaScript -->
                 <div class="blog-card blog-card-skeleton">
                     <div class="blog-card-image skeleton-image"></div>
                     <div class="blog-card-content">
@@ -103,14 +99,12 @@
                 </div>
             </div>
 
-            <!-- Botão Carregar Mais -->
             <div id="load-more-container" style="text-align: center; margin: 3rem 0;">
-                <button id="load-more-btn" class="btn btn-primary" style="padding: 1rem 2.5rem; font-size: 1rem;">
+                <button id="load-more-btn" class="btn btn-primary" style="padding: 1rem 2.5rem; font-size: 1rem; display: none;">
                     📄 Carregar Mais Artigos
                 </button>
             </div>
 
-            <!-- Newsletter Section -->
             <div class="blog-newsletter">
                 <div class="newsletter-content">
                     <h3>📧 Receba Nossas Novidades</h3>
@@ -124,7 +118,6 @@
         </div>
     </section>
 
-    <!-- Footer -->
     <footer class="footer">
         <div class="container">
             <div class="footer-content">
@@ -198,7 +191,6 @@
         </div>
     </footer>
 
-    <!-- WhatsApp Floating Button -->
     <div class="whatsapp-float">
         <a href="https://wa.me/5511957248425?text=Olá!%20Gostaria%20de%20solicitar%20uma%20entrega." target="_blank"
             aria-label="Fale conosco pelo WhatsApp">
@@ -209,16 +201,16 @@
         </a>
     </div>
 
-    <!-- Global Config -->
     <script src="config.js"></script>
     <script>
         // Carregar posts dinamicamente da API do servidor
         document.addEventListener('DOMContentLoaded', async () => {
             const grid = document.getElementById('blog-grid');
+            const loadMoreBtn = document.getElementById('load-more-btn');
 
             try {
-                // Unified Config - Single Source of Truth
-                const apiBase = AppConfig.getApiBaseUrl();
+                // Configuração com fallback caso AppConfig falhe
+                const apiBase = (typeof AppConfig !== 'undefined') ? AppConfig.getApiBaseUrl() : '';
 
                 let currentPage = 1;
                 const postsPerPage = 12;
@@ -229,7 +221,7 @@
                     
                     // Buscar posts da API real
                     const response = await fetch(`${apiBase}/wp-json/wp/v2/posts?status=publish&per_page=${postsPerPage}&page=${currentPage}`);
-                    if (!response.ok) throw new Error('Falha ao buscar posts');
+                    if (!response.ok) throw new Error('Falha ao buscar posts do servidor.');
                     const posts = await response.json();
 
                     if (!posts || posts.length === 0) {
@@ -243,21 +235,33 @@
                             `;
                         }
                         allLoaded = true;
-                        document.getElementById('load-more-btn').style.display = 'none';
+                        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
                         return;
                     }
 
-                    // Renderizar posts (append ou replace)
+                    // Renderizar posts corrigindo problemas de extração de dados
                     const postsHtml = posts.map((post, index) => {
                     try {
-                        // Extract data from WP format safely
-                        const title = post.title?.rendered || post.title || 'Sem título';
-                        const content = post.content?.rendered || post.content || '';
-                        // Remove tags HTML do excerpt e limita tamanho
-                        let cleanExcerpt = (post.excerpt?.rendered || post.excerpt || content).replace(/<[^>]*>?/gm, '');
+                        // Evita erro de objetos vazios do banco
+                        const title = post.title?.rendered || (typeof post.title === 'string' ? post.title : 'Sem título');
+                        const contentRaw = post.content?.rendered || (typeof post.content === 'string' ? post.content : '');
+                        const excerptRaw = post.excerpt?.rendered || (typeof post.excerpt === 'string' ? post.excerpt : '');
+                        
+                        // Seleciona o texto de forma limpa para não quebrar a função replace()
+                        const textToClean = (excerptRaw && excerptRaw.trim() !== '') ? excerptRaw : contentRaw;
+                        
+                        // Remove tags HTML de forma segura
+                        let cleanExcerpt = String(textToClean).replace(/<[^>]*>?/gm, '').trim();
                         if (cleanExcerpt.length > 120) cleanExcerpt = cleanExcerpt.substring(0, 120) + '...';
 
-                        const date = new Date(post.date || new Date()).toLocaleDateString('pt-BR', {
+                        // Trata problemas de compatibilidade de data do iOS/Safari
+                        let dateObj = new Date();
+                        if (post.date) {
+                            const safeDateStr = String(post.date).replace(' ', 'T'); // SQL Datetime para ISO
+                            dateObj = new Date(safeDateStr);
+                        }
+
+                        const dateStr = dateObj.toLocaleDateString('pt-BR', {
                             day: 'numeric',
                             month: 'long',
                             year: 'numeric'
@@ -265,16 +269,16 @@
 
                         // Fallback seguro para imagem
                         let image = 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop';
-                        // Usar featured_media_url direto da nossa API PHP
                         if (post.featured_media_url) {
                             image = post.featured_media_url;
                         } else if (post._embedded && post._embedded['wp:featuredmedia'] && post._embedded['wp:featuredmedia'][0]) {
                             image = post._embedded['wp:featuredmedia'][0].source_url || image;
                         }
 
+                        // Corrigido link relativo para previnir erros caso acesse com/sem 'www'
                         return `
                             <article class="blog-card animate-on-scroll" style="animation-delay: ${index * 100}ms">
-                                <a href="https://caasexpresss.com/${post.slug}" class="blog-card-image-link">
+                                <a href="/${post.slug}" class="blog-card-image-link">
                                     <div class="blog-card-image">
                                         <img src="${image}" alt="${title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop'">
                                         <span class="blog-category">Dicas</span>
@@ -286,7 +290,7 @@
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                                                 <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z" />
                                             </svg>
-                                            ${date}
+                                            ${dateStr}
                                         </span>
                                         <span class="blog-read-time">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -295,9 +299,9 @@
                                             5 min de leitura
                                         </span>
                                     </div>
-                                    <h2><a href="https://caasexpresss.com/${post.slug}">${title}</a></h2>
+                                    <h2><a href="/${post.slug}">${title}</a></h2>
                                     <p>${cleanExcerpt}</p>
-                                    <a href="https://caasexpresss.com/${post.slug}" class="blog-read-more">
+                                    <a href="/${post.slug}" class="blog-read-more">
                                         Ler mais
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                             <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
@@ -308,7 +312,7 @@
                         `;
                     } catch (err) {
                         console.warn('Erro ao renderizar um post:', err, post);
-                        return ''; // Pula post com erro
+                        return ''; // Pula o post que teve erro e não quebra a página
                     }
                     }).join('');
 
@@ -319,22 +323,26 @@
                         grid.innerHTML = postsHtml;
                     }
 
+                    // Se carregou posts, mostra o botão "Carregar Mais"
+                    if (posts.length > 0 && !allLoaded) {
+                        if (loadMoreBtn) loadMoreBtn.style.display = 'inline-block';
+                    }
+
                     // Inicializar animações para os novos elementos
                     const observer = new IntersectionObserver((entries) => {
-                    entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            entry.target.classList.add('animated');
-                            observer.unobserve(entry.target);
-                        }
-                    });
-                }, { threshold: 0.1 });
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                entry.target.classList.add('animated');
+                                observer.unobserve(entry.target);
+                            }
+                        });
+                    }, { threshold: 0.1 });
 
-                document.querySelectorAll('#blog-grid .animate-on-scroll').forEach(el => observer.observe(el));
+                    document.querySelectorAll('#blog-grid .animate-on-scroll').forEach(el => observer.observe(el));
 
-                    // Verificar se há mais posts
+                    // Verificar se há mais posts para as próximas páginas
                     if (posts.length < postsPerPage) {
                         allLoaded = true;
-                        const loadMoreBtn = document.getElementById('load-more-btn');
                         if (loadMoreBtn) loadMoreBtn.style.display = 'none';
                     }
                 }
@@ -343,10 +351,12 @@
                 await loadPosts();
 
                 // Evento do botão Carregar Mais
-                document.getElementById('load-more-btn')?.addEventListener('click', async () => {
-                    currentPage++;
-                    await loadPosts(true);
-                });
+                if (loadMoreBtn) {
+                    loadMoreBtn.addEventListener('click', async () => {
+                        currentPage++;
+                        await loadPosts(true);
+                    });
+                }
 
             } catch (error) {
                 console.error('Erro ao carregar posts:', error);
