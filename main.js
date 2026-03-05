@@ -12,7 +12,19 @@ document.addEventListener('DOMContentLoaded', () => {
   initSmoothScroll();
   initContactForm();
   initActiveNavLinks();
+  initPhoneMask(); 
+  initParallax();  
+  initBlockRightClick(); // Função que bloqueia o botão direito
 });
+
+/**
+ * Bloqueia o clique com o botão direito do mouse
+ */
+function initBlockRightClick() {
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+  });
+}
 
 /**
  * Mobile Menu Toggle
@@ -217,11 +229,13 @@ function initContactForm() {
     const delivery = formData.get('delivery');
     const cargo = formData.get('cargo');
     const notes = formData.get('notes');
+    const serviceType = formData.get('service'); 
     
     // Build WhatsApp message
     let whatsappMessage = `Olá! Gostaria de solicitar um orçamento de entrega:\n\n`;
     if (name) whatsappMessage += `*Nome:* ${name}\n`;
     if (company) whatsappMessage += `*Empresa:* ${company}\n`;
+    if (serviceType) whatsappMessage += `*Serviço:* ${getServiceName(serviceType)}\n`;
     if (pickup) whatsappMessage += `*Coleta:* ${pickup}\n`;
     if (delivery) whatsappMessage += `*Entrega:* ${delivery}\n`;
     if (cargo) whatsappMessage += `*Carga:* ${cargo}\n`;
@@ -252,7 +266,9 @@ function getServiceName(value) {
 }
 
 function showFormSuccess() {
-  const btn = document.querySelector('.contact-form .btn');
+  const btn = document.querySelector('#contact-form button[type="submit"]') || document.querySelector('.contact-form .btn');
+  if (!btn) return;
+
   const originalText = btn.innerHTML;
   
   btn.innerHTML = `
@@ -272,36 +288,40 @@ function showFormSuccess() {
 /**
  * Phone Input Mask (Brazilian Format)
  */
-const phoneInput = document.getElementById('phone');
-if (phoneInput) {
-  phoneInput.addEventListener('input', function(e) {
-    let value = e.target.value.replace(/\D/g, '');
-    
-    if (value.length > 11) value = value.slice(0, 11);
-    
-    if (value.length > 6) {
-      value = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
-    } else if (value.length > 2) {
-      value = `(${value.slice(0, 2)}) ${value.slice(2)}`;
-    } else if (value.length > 0) {
-      value = `(${value}`;
-    }
-    
-    e.target.value = value;
-  });
+function initPhoneMask() {
+  const phoneInput = document.getElementById('phone');
+  if (phoneInput) {
+    phoneInput.addEventListener('input', function(e) {
+      let value = e.target.value.replace(/\D/g, '');
+      
+      if (value.length > 11) value = value.slice(0, 11);
+      
+      if (value.length > 6) {
+        value = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
+      } else if (value.length > 2) {
+        value = `(${value.slice(0, 2)}) ${value.slice(2)}`;
+      } else if (value.length > 0) {
+        value = `(${value}`;
+      }
+      
+      e.target.value = value;
+    });
+  }
 }
 
 /**
- * Parallax Effect for Hero Section (Optional - Desktop Only)
+ * Parallax Effect for Hero Section (Desktop Only)
  */
-if (window.innerWidth > 768) {
-  window.addEventListener('scroll', () => {
-    const hero = document.querySelector('.hero');
-    if (hero) {
-      const scrolled = window.pageYOffset;
-      hero.style.backgroundPositionY = `${scrolled * 0.3}px`;
-    }
-  });
+function initParallax() {
+  if (window.innerWidth > 768) {
+    window.addEventListener('scroll', () => {
+      const hero = document.querySelector('.hero');
+      if (hero) {
+        const scrolled = window.pageYOffset;
+        hero.style.backgroundPositionY = `${scrolled * 0.3}px`;
+      }
+    });
+  }
 }
 
 /**
