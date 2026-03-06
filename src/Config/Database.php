@@ -11,14 +11,13 @@ class Database {
     private function __construct() {
         try {
             // Caminho para o banco de dados SQLite
-            // Ajuste conforme necessário. __DIR__ aponta para src/Config. 
-            // Subimos 2 níveis e entramos em db/database.sqlite
             $dbPath = __DIR__ . '/../../db/database.sqlite';
             
-            // Cria o diretório se não existir (apenas garantia)
+            // Cria o diretório se não existir
             $dir = dirname($dbPath);
             if (!is_dir($dir)) {
-                mkdir($dir, 0755, true);
+                // CORREÇÃO: O arroba '@' impede a Vercel de crashar o app
+                @mkdir($dir, 0755, true);
             }
 
             $this->pdo = new PDO("sqlite:" . $dbPath);
@@ -26,8 +25,12 @@ class Database {
             $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
             
             // Otimizações para SQLite
-            $this->pdo->exec("PRAGMA journal_mode = WAL;");
-            $this->pdo->exec("PRAGMA foreign_keys = ON;");
+            try {
+                $this->pdo->exec("PRAGMA journal_mode = WAL;");
+                $this->pdo->exec("PRAGMA foreign_keys = ON;");
+            } catch (PDOException $e) {
+                // Silencia erro caso Vercel bloqueie PRAGMA
+            }
 
         } catch (PDOException $e) {
             die("Erro na conexão com o banco de dados: " . $e->getMessage());
