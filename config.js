@@ -4,9 +4,9 @@
  */
 const AppConfig = {
     // Detect if we are running on Frontend Port (5500/5000) vs Backend (3001) vs Production (Vercel)
-    // Retorna URL base vazia para usar paths relativos no servidor PHP
+    // Alterado para apontar para a rota /api onde o PHP está processando as requisições no Vercel
     getApiBaseUrl() {
-        return '';
+        return '/api';
     }
 };
 
