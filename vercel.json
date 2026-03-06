@@ -26,6 +26,7 @@
     { "src": "/blog", "dest": "/blog.php" },
     { "src": "/webstories", "dest": "/webstories.php" },
     { "src": "/web-stories/(.*)", "dest": "/webstories.php" },
+    { "src": "/wp-json/(.*)", "dest": "/api/index.php" },
     { "src": "/api/(.*)", "dest": "/api/index.php" },
     { "src": "/(.*)", "dest": "/index.php" }
   ]
