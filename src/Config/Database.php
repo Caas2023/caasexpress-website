@@ -10,13 +10,11 @@ class Database {
 
     private function __construct() {
         try {
-            // Caminho para o banco de dados SQLite
             $dbPath = __DIR__ . '/../../db/database.sqlite';
             
-            // Cria o diretório se não existir
             $dir = dirname($dbPath);
             if (!is_dir($dir)) {
-                // CORREÇÃO: O arroba '@' impede a Vercel de crashar o app
+                // O arroba '@' silencia o erro caso o servidor não permita criar pastas (como na Vercel)
                 @mkdir($dir, 0755, true);
             }
 
@@ -24,12 +22,11 @@ class Database {
             $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
             
-            // Otimizações para SQLite
             try {
                 $this->pdo->exec("PRAGMA journal_mode = WAL;");
                 $this->pdo->exec("PRAGMA foreign_keys = ON;");
             } catch (PDOException $e) {
-                // Silencia erro caso Vercel bloqueie PRAGMA
+                // Silencioso
             }
 
         } catch (PDOException $e) {
@@ -44,7 +41,6 @@ class Database {
         return self::$instance->pdo;
     }
 
-    // Impede clonagem e unserialize
     private function __clone() {}
     public function __wakeup() {}
 }
