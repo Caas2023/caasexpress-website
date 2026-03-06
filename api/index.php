@@ -3,7 +3,8 @@
 require_once __DIR__ . '/../src/Config/Database.php';
 require_once __DIR__ . '/../src/Utils/Response.php';
 require_once __DIR__ . '/../src/Utils/Auth.php';
-// Caminhos corrigidos adicionando o diretório /php/
+
+// CORREÇÃO: Adicionado a pasta /php/ nos caminhos abaixo para bater com seu Git!
 require_once __DIR__ . '/../src/controllers/php/PostController.php';
 require_once __DIR__ . '/../src/controllers/php/MediaController.php';
 require_once __DIR__ . '/../src/controllers/php/UserController.php';
@@ -12,6 +13,7 @@ use Src\Controllers\PostController;
 use Src\Controllers\MediaController;
 use Src\Controllers\UserController;
 use Src\Utils\Response;
+
 
 // Verificar Método HTTP
 $method = $_SERVER['REQUEST_METHOD'];
@@ -70,7 +72,7 @@ elseif ($method === 'GET' && preg_match('#/wp-json/wp/v2/categories$#', $path)) 
      Response::json([['id'=>1, 'name'=>'Geral', 'slug'=>'geral', 'count'=>0]]);
 }
 
-// 6. Stats
+// 6. Stats - Contagem real do banco de dados
 elseif ($method === 'GET' && preg_match('#/wp-json/wp/v2/stats$#', $path)) {
     $pdo = \Src\Config\Database::getInstance();
     $posts = $pdo->query("SELECT COUNT(*) FROM posts WHERE status = 'publish' AND type = 'post'")->fetchColumn();
@@ -97,6 +99,7 @@ elseif ($method === 'GET' && preg_match('#/wp-json/wp/v2/stats/status$#', $path)
 }
 
 elseif ($method === 'OPTIONS') {
+    // CORS Preflight
     Response::json(['status' => 'ok']);
 }
 else {
