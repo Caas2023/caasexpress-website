@@ -3,15 +3,15 @@
 require_once __DIR__ . '/../src/Config/Database.php';
 require_once __DIR__ . '/../src/Utils/Response.php';
 require_once __DIR__ . '/../src/Utils/Auth.php';
-require_once __DIR__ . '/../src/controllers/PostController.php';
-require_once __DIR__ . '/../src/controllers/MediaController.php';
-require_once __DIR__ . '/../src/controllers/UserController.php';
+// CORREÇÃO: Adicionado o diretório /php/ nos caminhos abaixo
+require_once __DIR__ . '/../src/controllers/php/PostController.php';
+require_once __DIR__ . '/../src/controllers/php/MediaController.php';
+require_once __DIR__ . '/../src/controllers/php/UserController.php';
 
 use Src\Controllers\PostController;
 use Src\Controllers\MediaController;
 use Src\Controllers\UserController;
 use Src\Utils\Response;
-
 
 // Verificar Método HTTP
 $method = $_SERVER['REQUEST_METHOD'];
@@ -51,9 +51,8 @@ elseif ($method === 'GET' && preg_match('#/wp-json/wp/v2/users$#', $path)) {
     (new UserController())->index();
 }
 
-// 3. Web Stories (usando PostController com type=web-story por enquanto ou mock)
+// 3. Web Stories
 elseif ($method === 'GET' && preg_match('#/wp-json/wp/v2/web-story$#', $path)) {
-    // Por enquanto, reuse index de posts filtrando type web-story se implementado, ou mock vazio
     $_GET['type'] = 'web-story';
     (new PostController())->index();
 }
@@ -63,12 +62,11 @@ elseif ($method === 'POST' && preg_match('#/wp-json/wp/v2/media$#', $path)) {
     (new MediaController())->create();
 }
 elseif ($method === 'GET' && preg_match('#/wp-json/wp/v2/media$#', $path)) {
-    (new MediaController())->index(); // Falta implementar index no MediaController
+    (new MediaController())->index(); 
 }
 
 // 5. Categorias
 elseif ($method === 'GET' && preg_match('#/wp-json/wp/v2/categories$#', $path)) {
-     // Mock ou implementar CategoriaController
      Response::json([['id'=>1, 'name'=>'Geral', 'slug'=>'geral', 'count'=>0]]);
 }
 
@@ -77,7 +75,7 @@ elseif ($method === 'GET' && preg_match('#/wp-json/wp/v2/stats$#', $path)) {
     $pdo = \Src\Config\Database::getInstance();
     $posts = $pdo->query("SELECT COUNT(*) FROM posts WHERE status = 'publish' AND type = 'post'")->fetchColumn();
     $pages = $pdo->query("SELECT COUNT(*) FROM posts WHERE status = 'publish' AND type = 'page'")->fetchColumn();
-    $comments = 0; // Implementar se tiver tabela de comentários
+    $comments = 0; 
     Response::json([
         'posts' => (int)$posts,
         'pages' => (int)$pages,
@@ -85,7 +83,7 @@ elseif ($method === 'GET' && preg_match('#/wp-json/wp/v2/stats$#', $path)) {
     ]);
 }
 
-// 7. Stats por Status - Contagem de posts por status
+// 7. Stats por Status
 elseif ($method === 'GET' && preg_match('#/wp-json/wp/v2/stats/status$#', $path)) {
     $pdo = \Src\Config\Database::getInstance();
     $all = $pdo->query("SELECT COUNT(*) FROM posts WHERE type = 'post'")->fetchColumn();
