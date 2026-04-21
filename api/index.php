@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../src/Config/Database.php';
 require_once __DIR__ . '/../src/Utils/Response.php';
 require_once __DIR__ . '/../src/Utils/Auth.php';
+require_once __DIR__ . '/../src/Utils/Cache.php';
 
 // CORREÇÃO: Adicionado a pasta /php/ nos caminhos abaixo para bater com seu Git!
 require_once __DIR__ . '/../src/controllers/php/PostController.php';
