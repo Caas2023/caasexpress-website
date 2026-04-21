@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+<?php require_once __DIR__ . '/src/Components/Logo.php'; ?>
 
 <head>
   <meta charset="UTF-8">
@@ -18,8 +19,7 @@
   <meta property="og:image" content="./assets/og-image.jpg">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml"
-    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23E63946' rx='15' width='100' height='100'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='50' font-family='Arial' font-weight='bold'%3EC%3C/text%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,<?= base64_encode(\Src\Components\Logo::render('symbol', 100, 100)) ?>">
 
   <!-- DNS Prefetch & Preconnect for Performance -->
   <link rel="dns-prefetch" href="//fonts.googleapis.com">
@@ -92,8 +92,7 @@
   <header class="header" id="header">
     <div class="container">
       <a href="#" class="logo">
-        <div class="logo-icon">🏍️</div>
-        Caas <span>Express</span>
+        <?php echo \Src\Components\Logo::render('full', 200, 48); ?>
       </a>
 
       <nav class="nav">

@@ -27,8 +27,10 @@
     <header class="header scrolled" id="header">
         <div class="container">
             <a href="index.php" class="logo">
-                <div class="logo-icon">🏍️</div>
-                Caas <span>Express</span>
+                <?php 
+                require_once __DIR__ . '/src/Components/Logo.php';
+                echo \Src\Components\Logo::render('full', 180, 40); 
+                ?>
             </a>
 
             <nav class="nav">

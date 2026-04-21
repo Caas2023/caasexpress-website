@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/src/Config/Database.php';
+require_once __DIR__ . '/src/Components/Logo.php';
 use Src\Config\Database;
 $pdo = Database::getInstance();
 
@@ -37,7 +38,9 @@ $allCats = $catsStmt->fetchAll(PDO::FETCH_ASSOC);
     <div id="login-screen" class="login-container">
         <div class="login-box">
             <div class="login-header">
-                <div class="logo-icon">W</div>
+                <div class="logo-icon" style="background:transparent;">
+                    <?php echo \Src\Components\Logo::render('symbol', 60, 60); ?>
+                </div>
                 <h2>Caas Express Admin</h2>
                 <p>Entre para gerenciar o conteúdo</p>
             </div>
@@ -61,9 +64,9 @@ $allCats = $catsStmt->fetchAll(PDO::FETCH_ASSOC);
 
         <!-- Sidebar -->
         <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-icon">W</div>
-                <span>Caas Admin</span>
+            <div class="sidebar-header" style="padding: 1rem;">
+                <?php echo \Src\Components\Logo::render('symbol', 40, 40); ?>
+                <span style="font-family: 'Outfit', sans-serif; font-weight: 800; color: white;">Caas Admin</span>
             </div>
 
             <nav class="sidebar-nav">
