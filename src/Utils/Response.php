@@ -15,13 +15,16 @@ class Response {
             header("Cache-Control: no-cache, no-store, must-revalidate");
         }
         
-        // CORS - Restringir em produção
-        $allowedOrigins = ['http://localhost:8000', 'https://caasexpresss.com'];
+        // CORS - Permitir localhost em qualquer porta para desenvolvimento
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-        if (in_array($origin, $allowedOrigins)) {
+        $isLocalhost = preg_match('/^https?:\/\/localhost(:\d+)?$/', $origin) || preg_match('/^https?:\/\/127\.0\.0\.1(:\d+)?$/', $origin);
+        
+        if ($isLocalhost) {
             header("Access-Control-Allow-Origin: $origin");
+            header("Access-Control-Allow-Credentials: true");
         } else {
-            header('Access-Control-Allow-Origin: http://localhost:8000'); // Default dev
+            // Produção
+            header('Access-Control-Allow-Origin: https://caasexpresss.com');
         }
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');

@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/src/Config/Database.php';
+require_once __DIR__ . '/../../src/Config/Database.php';
 use Src\Config\Database;
 
 $pdo = Database::getInstance();

@@ -50,8 +50,15 @@ app.use(`${API_PREFIX}/categories`, require('./src/routes/categories.routes')(au
 app.use(`${API_PREFIX}/tags`, require('./src/routes/tags.routes')(auth));
 app.use(`${API_PREFIX}/media`, require('./src/routes/media.routes')(auth, upload, UPLOADS_DIR));
 
-// Start Node Server
-app.listen(PORT, () => {
-    console.log(`[🚀 CaaS Express Backend] Servidor Express Ativo!`);
-    console.log(`[🔗 API URL] http://localhost:${PORT}${API_PREFIX}`);
+// Initialize Database and Start Node Server
+const { initDatabase } = require('./src/models/database');
+
+initDatabase().then(() => {
+    app.listen(PORT, () => {
+        console.log(`[🚀 CaaS Express Backend] Servidor Express Ativo!`);
+        console.log(`[🔗 API URL] http://localhost:${PORT}${API_PREFIX}`);
+    });
+}).catch(err => {
+    console.error('❌ Falha ao inicializar banco de dados:', err);
+    process.exit(1);
 });

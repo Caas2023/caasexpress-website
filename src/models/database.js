@@ -23,9 +23,9 @@ async function initDatabase() {
             console.error('   Configure as variáveis de ambiente em: https://vercel.com/dashboard → Settings → Environment Variables');
             throw new Error('Turso credentials required in production. See docs: https://turso.tech');
         }
-        console.warn('⚠️ Turso credentials not configured. Using in-memory database (data will not persist).');
-        // Fallback to local SQLite file for development
-        db = createClient({ url: 'file:./data/local.db' });
+        console.warn('⚠️ Turso credentials not configured. Using local SQLite file (db/database.sqlite).');
+        // Fallback to local SQLite file for development (matching PHP)
+        db = createClient({ url: 'file:db/database.sqlite' });
     } else {
         db = createClient({ url, authToken });
         console.log('✅ Connected to Turso database');
@@ -152,7 +152,7 @@ function getDb() {
 class PostsRepository {
     async getAll(filters = {}) {
         let query = `
-            SELECT p.*, m.source_url as featured_media_url 
+            SELECT p.*, m.file_path as featured_media_url 
             FROM posts p 
             LEFT JOIN media m ON p.featured_media = m.id 
             WHERE 1=1
@@ -165,7 +165,7 @@ class PostsRepository {
         }
         if (filters.type) {
             query += ' AND p.type = ?';
-            args.push(filters.type);
+            args.push(filters.type || 'post');
         }
         if (filters.search) {
             query += ' AND (p.title LIKE ? OR p.content LIKE ?)';
@@ -176,7 +176,7 @@ class PostsRepository {
             args.push(filters.slug);
         }
 
-        query += ' ORDER BY p.date DESC';
+        query += ' ORDER BY p.created_at DESC';
 
         if (filters.per_page) {
             query += ' LIMIT ?';
@@ -194,7 +194,7 @@ class PostsRepository {
     async getById(id) {
         const result = await getDb().execute({
             sql: `
-                SELECT p.*, m.source_url as featured_media_url 
+                SELECT p.*, m.file_path as featured_media_url 
                 FROM posts p 
                 LEFT JOIN media m ON p.featured_media = m.id 
                 WHERE p.id = ?
@@ -220,10 +220,9 @@ class PostsRepository {
     }
 
     async create(data) {
-        const now = new Date().toISOString();
         const result = await getDb().execute({
-            sql: `INSERT INTO posts (title, content, excerpt, slug, status, type, author, featured_media, categories, tags, meta, date, date_gmt, modified, modified_gmt)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            sql: `INSERT INTO posts (title, content, excerpt, slug, status, type, author_id, featured_media)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             args: [
                 data.title || '',
                 data.content || '',
@@ -232,14 +231,7 @@ class PostsRepository {
                 data.status || 'draft',
                 data.type || 'post',
                 data.author || 1,
-                data.featured_media || 0,
-                JSON.stringify(data.categories || [1]),
-                JSON.stringify(data.tags || []),
-                JSON.stringify(data.meta || {}),
-                data.date || now,
-                data.date_gmt || now,
-                now,
-                now
+                data.featured_media || 0
             ]
         });
         return this.getById(result.lastInsertRowid);
@@ -249,14 +241,12 @@ class PostsRepository {
         const existing = await this.getById(id);
         if (!existing) return null;
 
-        const now = new Date().toISOString();
         const merged = { ...existing, ...data };
 
         await getDb().execute({
             sql: `UPDATE posts SET
                     title = ?, content = ?, excerpt = ?, slug = ?, status = ?, type = ?,
-                    author = ?, featured_media = ?, categories = ?, tags = ?, meta = ?,
-                    modified = ?, modified_gmt = ?
+                    author_id = ?, featured_media = ?, updated_at = CURRENT_TIMESTAMP
                   WHERE id = ?`,
             args: [
                 merged.title,
@@ -265,13 +255,8 @@ class PostsRepository {
                 merged.slug,
                 merged.status,
                 merged.type,
-                merged.author,
+                merged.author_id || merged.author,
                 merged.featured_media,
-                JSON.stringify(merged.categories),
-                JSON.stringify(merged.tags),
-                JSON.stringify(merged.meta),
-                now,
-                now,
                 parseInt(id)
             ]
         });
@@ -284,12 +269,31 @@ class PostsRepository {
     }
 
     _parseRow(row) {
-        return {
-            ...row,
-            categories: JSON.parse(row.categories || '[]'),
-            tags: JSON.parse(row.tags || '[]'),
-            meta: JSON.parse(row.meta || '{}')
-        };
+        if (!row) return row;
+        try {
+            return {
+                ...row,
+                author: row.author_id || 1,
+                date: row.created_at || row.date,
+                date_gmt: row.created_at || row.date_gmt,
+                modified: row.updated_at || row.modified,
+                modified_gmt: row.updated_at || row.modified_gmt,
+                categories: JSON.parse(row.categories || '[1]'),
+                tags: JSON.parse(row.tags || '[]'),
+                meta: JSON.parse(row.meta || '{}')
+            };
+        } catch (e) {
+            // Fallback para campos inexistentes no banco real
+            return {
+                ...row,
+                author: row.author_id || 1,
+                date: row.created_at,
+                modified: row.updated_at,
+                categories: [1],
+                tags: [],
+                meta: {}
+            };
+        }
     }
 }
 

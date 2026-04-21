@@ -17,15 +17,22 @@ use Src\Utils\Response;
 
 // Verificar Método HTTP
 $method = $_SERVER['REQUEST_METHOD'];
-// Pegar URI (path)
-$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-// Remover prefixos
+// Pegar URI (path) sem query string
+$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$path = $uri;
+
+// Remover prefixos comuns e normalizar
 $path = str_replace('/api/index.php', '', $path);
-// Normalizar o path para remover /index.php inicial se vier do router
-if (strpos($path, '/index.php/wp-json') === 0) {
-    $path = str_replace('/index.php', '', $path);
+$path = str_replace('/api', '', $path);
+
+// Se o roteador do Vercel/Apache passar index.php no meio, limpa
+if (strpos($path, '/index.php') === 0) {
+    $path = substr($path, 10);
 }
+
+$path = '/' . ltrim($path, '/');
 $path = rtrim($path, '/');
+if ($path === '') $path = '/';
 
 // Roteamento
 // 1. Posts

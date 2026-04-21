@@ -35,25 +35,23 @@ class PostController {
             }
             // --- HYBRID CACHE END ---
 
-            if ($type) {
-                $whereType = "AND p.type = :type";
-                $params[':type'] = $type;
-            }
+            $status = $_GET['status'] ?? 'publish';
+            $whereType = "AND p.type = :type"; // Sempre filtrar por tipo
+            $params[':type'] = $type ?: 'post';
 
             $query = "SELECT p.*, u.display_name as author_name, m.file_path as featured_media_url 
                       FROM posts p 
                       LEFT JOIN users u ON p.author_id = u.id
                       LEFT JOIN media m ON p.featured_media = m.id
-                      WHERE (p.status = 'publish' OR p.status = 'draft') $whereType
+                      WHERE p.status = :status $whereType
                       ORDER BY p.created_at DESC 
                       LIMIT :limit OFFSET :offset";
 
             $stmt = $this->pdo->prepare($query);
             $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
             $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-            if ($type) {
-                $stmt->bindValue(':type', $type);
-            }
+            $stmt->bindValue(':status', $status);
+            $stmt->bindValue(':type', $params[':type']);
             $stmt->execute();
             
             $posts = $stmt->fetchAll();
